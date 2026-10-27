@@ -68,3 +68,18 @@ def test_prompt_does_not_offer_unavailable_sources():
     prompt = build_system_prompt(now=_fixed_now())
 
     assert "No ofrezcas fuentes alternativas" in prompt
+
+
+def test_prompt_asks_for_natural_conversational_language():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "conversación normal" in prompt
+    assert "No uses listas" in prompt
+    assert "no seas telegráfico" in prompt.lower()
+
+
+def test_prompt_uses_location_from_context_without_asking_again():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "Si el contexto ya trae una ciudad" in prompt
+    assert "no vuelvas a preguntar" in prompt

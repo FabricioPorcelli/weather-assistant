@@ -9,7 +9,7 @@ deterministas sobre paraguas, ropa, riego y actividades, usando datos reales de
 
 ## Estado
 
-**Fase 3 — API de chat con SSE y persistencia**
+**Fase 4 — Integración con el dashboard**
 
 - [x] Aplicación FastAPI con configuración tipada.
 - [x] `GET /v1/health`.
@@ -25,8 +25,8 @@ deterministas sobre paraguas, ropa, riego y actividades, usando datos reales de
 - [x] `POST /v1/chat` con streaming SSE real.
 - [x] Sesiones, historial y tool calls persistidos en PostgreSQL.
 - [x] Rate limit por IP y límites de mensaje.
-- [x] 287 tests sin red con `respx`.
-- [ ] Integración con el dashboard (Fase 4).
+- [x] Dashboard con chat opcional en ventana emergente, texto natural y confianza.
+- [x] 289 tests sin red con `respx`.
 
 ## Qué hace por ahora
 
@@ -311,8 +311,25 @@ Si no se envía `session_id`, se crea una sesión nueva. Para continuar una
 conversación, se envía el `session_id` recibido. El historial de los últimos
 `HISTORY_TURNS` pares usuario/asistente se agrega al prompt.
 
-> `EventSource` del navegador solo permite GET. El dashboard debe usar `fetch` +
+> `EventSource` del navegador solo permite GET. El dashboard usa `fetch` +
 > `ReadableStream` para consumir este SSE por POST.
+
+## Integración con el dashboard
+
+El repo hermano `weather-dashboard` consume este chat de forma **opcional**:
+
+- El chat se abre en un popup de Leaflet anclado al marcador, con el título
+  “Pregunta sobre el clima”.
+- Si el assistant está corriendo, permite preguntar y muestra solo la respuesta
+  en lenguaje natural, con una línea de confianza al final.
+- Si el assistant está apagado, el dashboard de clima sigue funcionando y solo
+  falla esa ventana, con un mensaje controlado.
+- Las negritas `**texto**` se renderizan de forma segura.
+- Si el punto cambia a más de 5 km, el chat reinicia la conversación. Los puntos
+  usados y sus mensajes quedan guardados en el navegador; al volver a ese punto
+  o tocar el ancla se restaura la conversación.
+- El origen del dashboard (`http://localhost:5500` y `http://127.0.0.1:5500`)
+  está permitido por `ASSISTANT_CORS_ORIGINS`.
 
 ## Base de datos y migraciones
 
