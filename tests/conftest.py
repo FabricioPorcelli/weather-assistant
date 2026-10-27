@@ -11,6 +11,8 @@ import pytest
 import respx
 
 os.environ["WEATHER_API_BASE_URL"] = "http://weather-api"
+os.environ["WEATHER_API_RETRIES"] = "0"
+os.environ["WEATHER_API_RETRY_DELAY_SECONDS"] = "0"
 
 from app.clients.weather_api import WeatherApiClient  # noqa: E402
 from app.main import app  # noqa: E402
@@ -43,6 +45,6 @@ async def api_client():
 @pytest.fixture
 async def weather_client():
     """Cliente de weather-api con limpieza automática de conexiones."""
-    client = WeatherApiClient(BASE_URL)
+    client = WeatherApiClient(BASE_URL, retries=0)
     yield client
     await client.aclose()

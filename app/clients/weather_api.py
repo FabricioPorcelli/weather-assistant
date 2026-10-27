@@ -5,6 +5,7 @@ errores HTTP o de red en excepciones de dominio. Así el resto de la aplicación
 no necesita conocer códigos de estado ni detalles de httpx.
 """
 
+import asyncio
 from datetime import date, datetime, time
 from types import TracebackType
 from typing import Protocol, Self, TypeVar
@@ -23,6 +24,7 @@ from pydantic import (
 DEFAULT_FORECAST_DAYS = 5
 MIN_FORECAST_DAYS = 1
 MAX_FORECAST_DAYS = 15
+RETRYABLE_STATUS_CODES = frozenset({502, 504})
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
@@ -154,13 +156,26 @@ class WeatherApi(Protocol):
 class WeatherApiClient:
     """Cliente async con timeouts y errores de dominio tipados."""
 
-    def __init__(self, base_url: str, *, timeout: float = 10.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        timeout: float = 10.0,
+        retries: int = 1,
+        retry_delay: float = 0.5,
+    ) -> None:
         base_url = base_url.strip().rstrip("/")
         if not base_url:
             raise ValueError("base_url no puede estar vacía")
         if timeout <= 0:
             raise ValueError("timeout debe ser mayor que cero")
+        if not 0 <= retries <= 3:
+            raise ValueError("retries debe estar entre 0 y 3")
+        if retry_delay < 0:
+            raise ValueError("retry_delay no puede ser negativo")
 
+        self._retries = retries
+        self._retry_delay = retry_delay
         self._http = httpx.AsyncClient(base_url=base_url, timeout=timeout)
 
     async def get_current(self, location: Location) -> CurrentWeather:
@@ -223,13 +238,29 @@ class WeatherApiClient:
     async def _get_json(
         self, path: str, params: dict[str, str | int] | None = None
     ) -> object:
-        """Hace un GET y traduce fallos de red o HTTP a errores de dominio."""
-        try:
-            response = await self._http.get(path, params=params)
-        except httpx.TimeoutException as exc:
-            raise UpstreamTimeout("weather-api no respondió a tiempo") from exc
-        except httpx.RequestError as exc:
-            raise UpstreamError("no se pudo conectar con weather-api") from exc
+        """Hace un GET, reintenta fallos transitorios y traduce errores."""
+        response = None
+        for attempt in range(self._retries + 1):
+            try:
+                response = await self._http.get(path, params=params)
+            except httpx.TimeoutException as exc:
+                if attempt < self._retries:
+                    await asyncio.sleep(self._retry_delay)
+                    continue
+                raise UpstreamTimeout("weather-api no respondió a tiempo") from exc
+            except httpx.RequestError as exc:
+                raise UpstreamError("no se pudo conectar con weather-api") from exc
+
+            if (
+                response.status_code in RETRYABLE_STATUS_CODES
+                and attempt < self._retries
+            ):
+                await asyncio.sleep(self._retry_delay)
+                continue
+            break
+
+        if response is None:
+            raise UpstreamError("weather-api no devolvió una respuesta")
 
         if response.status_code == 404:
             raise LocationNotFound("weather-api no encontró la ubicación")

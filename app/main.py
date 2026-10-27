@@ -27,6 +27,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.weather_client = WeatherApiClient(
         settings.weather_api_base_url,
         timeout=settings.weather_api_timeout_seconds,
+        retries=settings.weather_api_retries,
+        retry_delay=settings.weather_api_retry_delay_seconds,
     )
     try:
         yield
