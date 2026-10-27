@@ -127,14 +127,14 @@ class Forecast(BaseModel):
     """Pronóstico diario devuelto por weather-api."""
 
     location: str
-    days: list[DailyForecast]
+    days: list[DailyForecast] = Field(min_length=1)
 
 
 class History(BaseModel):
     """Histórico diario devuelto por weather-api."""
 
     location: str
-    days: list[DailyForecast]
+    days: list[DailyForecast] = Field(min_length=1)
 
 
 class WeatherApiClient:

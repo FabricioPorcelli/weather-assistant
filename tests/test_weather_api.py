@@ -246,6 +246,25 @@ async def test_unexpected_schema_is_mapped(weather_client, api_mock):
         await weather_client.get_current(Location(city="Madrid"))
 
 
+async def test_empty_history_is_mapped(weather_client, api_mock):
+    api_mock.get(
+        "/v1/history/Madrid",
+        params={"start": "2026-09-20", "end": "2026-09-21"},
+    ).mock(
+        return_value=httpx.Response(
+            200,
+            json={"location": "Madrid, Spain", "days": []},
+        )
+    )
+
+    with pytest.raises(UpstreamError):
+        await weather_client.get_history(
+            Location(city="Madrid"),
+            start=date(2026, 9, 20),
+            end=date(2026, 9, 21),
+        )
+
+
 @pytest.mark.parametrize(
     ("base_url", "timeout"),
     [

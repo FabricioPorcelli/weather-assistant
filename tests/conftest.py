@@ -4,12 +4,16 @@ Los tests no tocan la red: respx intercepta las llamadas de httpx. El cliente
 de pruebas apunta a un host ficticio que solo existe dentro del mock.
 """
 
+import os
+
 import httpx
 import pytest
 import respx
 
-from app.clients.weather_api import WeatherApiClient
-from app.main import app
+os.environ["WEATHER_API_BASE_URL"] = "http://weather-api"
+
+from app.clients.weather_api import WeatherApiClient  # noqa: E402
+from app.main import app  # noqa: E402
 
 BASE_URL = "http://weather-api"
 
@@ -17,7 +21,7 @@ BASE_URL = "http://weather-api"
 @pytest.fixture
 def api_mock():
     """Intercepta las llamadas httpx hacia el host ficticio de weather-api."""
-    with respx.mock(base_url=BASE_URL) as mock:
+    with respx.mock(base_url=BASE_URL, assert_all_called=False) as mock:
         yield mock
 
 

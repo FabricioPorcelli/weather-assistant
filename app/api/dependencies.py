@@ -1,0 +1,40 @@
+"""Dependencias reutilizables por los routers de la API."""
+
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, Query, Request
+from pydantic import ValidationError
+
+from app.clients.weather_api import Location, WeatherApiClient
+
+
+def get_weather_client(request: Request) -> WeatherApiClient:
+    """Devuelve el cliente HTTP creado en el lifespan de la aplicación."""
+    return request.app.state.weather_client
+
+
+def get_location(
+    city: Annotated[str | None, Query(description="Nombre de la ciudad")] = None,
+    lat: Annotated[
+        float | None,
+        Query(ge=-90, le=90, description="Latitud en grados decimales"),
+    ] = None,
+    lon: Annotated[
+        float | None,
+        Query(ge=-180, le=180, description="Longitud en grados decimales"),
+    ] = None,
+    label: Annotated[
+        str | None,
+        Query(max_length=200, description="Texto para mostrar la ubicación"),
+    ] = None,
+) -> Location:
+    """Construye y valida una ubicación a partir de los query params."""
+    try:
+        return Location(city=city, lat=lat, lon=lon, label=label)
+    except ValidationError as exc:
+        detail = exc.errors()[0].get("msg", "Ubicación inválida")
+        raise HTTPException(status_code=422, detail=detail) from exc
+
+
+LocationDep = Annotated[Location, Depends(get_location)]
+WeatherClientDep = Annotated[WeatherApiClient, Depends(get_weather_client)]

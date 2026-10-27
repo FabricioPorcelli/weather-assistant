@@ -12,9 +12,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.api.advice import router as advice_router
 from app.api.health import router as health_router
 from app.clients.weather_api import WeatherApiClient
 from app.config import get_settings
+from app.errors import register_exception_handlers
 
 
 @asynccontextmanager
@@ -41,6 +43,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+register_exception_handlers(app)
+
 settings = get_settings()
 if settings.assistant_cors_origins:
     app.add_middleware(
@@ -51,3 +55,4 @@ if settings.assistant_cors_origins:
     )
 
 app.include_router(health_router)
+app.include_router(advice_router)
