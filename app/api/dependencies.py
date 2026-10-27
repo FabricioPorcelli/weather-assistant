@@ -5,12 +5,13 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Query, Request
 from pydantic import ValidationError
 
-from app.clients.weather_api import Location, WeatherApiClient
+from app.clients.request_cache import RequestWeatherClient
+from app.clients.weather_api import Location
 
 
-def get_weather_client(request: Request) -> WeatherApiClient:
-    """Devuelve el cliente HTTP creado en el lifespan de la aplicación."""
-    return request.app.state.weather_client
+def get_weather_client(request: Request) -> RequestWeatherClient:
+    """Envuelve el cliente compartido con caché válida solo para este pedido."""
+    return RequestWeatherClient(request.app.state.weather_client)
 
 
 def get_location(
@@ -37,4 +38,4 @@ def get_location(
 
 
 LocationDep = Annotated[Location, Depends(get_location)]
-WeatherClientDep = Annotated[WeatherApiClient, Depends(get_weather_client)]
+WeatherClientDep = Annotated[RequestWeatherClient, Depends(get_weather_client)]

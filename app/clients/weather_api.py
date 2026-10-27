@@ -7,7 +7,7 @@ no necesita conocer códigos de estado ni detalles de httpx.
 
 from datetime import date, datetime, time
 from types import TracebackType
-from typing import Self, TypeVar
+from typing import Protocol, Self, TypeVar
 from urllib.parse import quote
 
 import httpx
@@ -135,6 +135,20 @@ class History(BaseModel):
 
     location: str
     days: list[DailyForecast] = Field(min_length=1)
+
+
+class WeatherApi(Protocol):
+    """Operaciones que necesita el motor; permite sustituir el cliente."""
+
+    async def get_current(self, location: Location) -> CurrentWeather: ...
+
+    async def get_forecast(
+        self, location: Location, days: int = DEFAULT_FORECAST_DAYS
+    ) -> Forecast: ...
+
+    async def get_history(
+        self, location: Location, start: date, end: date
+    ) -> History: ...
 
 
 class WeatherApiClient:
