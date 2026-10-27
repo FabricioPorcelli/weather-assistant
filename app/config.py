@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     weather_api_timeout_seconds: float = 10.0
     weather_api_retries: int = 1
     weather_api_retry_delay_seconds: float = 0.5
+
+    database_url: str = (
+        "postgresql+asyncpg://assistant:assistant@localhost:5432/assistant"
+    )
+    redis_url: str = "redis://localhost:6379/1"
+    rate_limit: str = "20/minute"
+    max_message_chars: int = 500
+    history_turns: int = 6
+
     # NoDecode evita que pydantic-settings intente interpretar el string como
     # JSON antes de que corra el validador que separa por comas.
     assistant_cors_origins: Annotated[list[str], NoDecode] = []
@@ -83,6 +92,40 @@ class Settings(BaseSettings):
         if value and not value.startswith(("http://", "https://")):
             raise ValueError("llm_base_url debe empezar con http:// o https://")
         return value
+
+    @field_validator("database_url")
+    @classmethod
+    def _validate_database_url(cls, value: str) -> str:
+        """Acepta PostgreSQL en producción y SQLite solo para tests."""
+        if not value.startswith(("postgresql+asyncpg://", "sqlite+aiosqlite://")):
+            raise ValueError(
+                "database_url debe usar postgresql+asyncpg:// o sqlite+aiosqlite://"
+            )
+        return value
+
+    @field_validator("max_message_chars")
+    @classmethod
+    def _validate_max_message_chars(cls, value: int) -> int:
+        """Limita el tamaño para evitar pedidos desmesurados al LLM."""
+        if not 1 <= value <= 5000:
+            raise ValueError("max_message_chars debe estar entre 1 y 5000")
+        return value
+
+    @field_validator("history_turns")
+    @classmethod
+    def _validate_history_turns(cls, value: int) -> int:
+        """Permite desactivar el historial, pero con un tope razonable."""
+        if not 0 <= value <= 50:
+            raise ValueError("history_turns debe estar entre 0 y 50")
+        return value
+
+    @field_validator("rate_limit")
+    @classmethod
+    def _validate_rate_limit(cls, value: str) -> str:
+        """Evita una configuración vacía que desactive el límite sin querer."""
+        if not value.strip():
+            raise ValueError("rate_limit no puede estar vacío")
+        return value.strip()
 
     @field_validator("assistant_cors_origins", mode="before")
     @classmethod

@@ -8,6 +8,8 @@ htmlcov/
 .env
 .env.*
 !.env.example
+*.db
+*.sqlite3
 
 # Guía interna de trabajo: no se publica en el repo.
 AGENTS.md

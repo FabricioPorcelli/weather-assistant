@@ -16,6 +16,11 @@ ENV_KEYS = (
     "LLM_MODEL",
     "LLM_TIMEOUT_SECONDS",
     "MAX_TOOL_CALLS_PER_TURN",
+    "DATABASE_URL",
+    "REDIS_URL",
+    "RATE_LIMIT",
+    "MAX_MESSAGE_CHARS",
+    "HISTORY_TURNS",
 )
 
 
@@ -38,6 +43,11 @@ def test_default_settings(monkeypatch):
     assert settings.llm_model == ""
     assert settings.llm_timeout_seconds == 30.0
     assert settings.max_tool_calls_per_turn == 4
+    assert settings.database_url.startswith("postgresql+asyncpg://")
+    assert settings.redis_url == "redis://localhost:6379/1"
+    assert settings.rate_limit == "20/minute"
+    assert settings.max_message_chars == 500
+    assert settings.history_turns == 6
 
 
 def test_cors_origins_are_split_by_comma(monkeypatch):
@@ -90,6 +100,12 @@ def test_llm_settings_are_loaded(monkeypatch):
         ("LLM_TIMEOUT_SECONDS", "0"),
         ("MAX_TOOL_CALLS_PER_TURN", "0"),
         ("MAX_TOOL_CALLS_PER_TURN", "11"),
+        ("DATABASE_URL", "mysql://localhost/db"),
+        ("MAX_MESSAGE_CHARS", "0"),
+        ("MAX_MESSAGE_CHARS", "5001"),
+        ("HISTORY_TURNS", "-1"),
+        ("HISTORY_TURNS", "51"),
+        ("RATE_LIMIT", "   "),
     ],
 )
 def test_invalid_settings_are_rejected(monkeypatch, key, value):
