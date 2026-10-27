@@ -4,7 +4,12 @@ from copy import deepcopy
 from datetime import date, timedelta
 from typing import Any
 
-from app.agent.llm import LLMError, LLMResponse
+from app.agent.llm import (
+    LLMError,
+    LLMResponse,
+    StreamCompleted,
+    TextDelta,
+)
 from app.clients.weather_api import (
     DEFAULT_FORECAST_DAYS,
     CurrentWeather,
@@ -44,6 +49,27 @@ class FakeLLMClient:
             raise AssertionError("FakeLLMClient se quedó sin respuestas")
         return self.responses.pop(0)
 
+    async def stream(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ):
+        self.calls.append(
+            {
+                "messages": deepcopy(messages),
+                "tools": deepcopy(tools),
+            }
+        )
+        if not self.responses:
+            raise AssertionError("FakeLLMClient se quedó sin respuestas")
+        response = self.responses.pop(0)
+
+        if response.content:
+            for start in range(0, len(response.content), 12):
+                yield TextDelta(response.content[start : start + 12])
+
+        yield StreamCompleted(response)
+
     async def aclose(self) -> None:
         """No hay recursos que cerrar."""
 
@@ -57,6 +83,14 @@ class FailingLLMClient:
         tools: list[dict[str, Any]],
     ) -> LLMResponse:
         raise LLMError("proveedor caído")
+
+    async def stream(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ):
+        raise LLMError("proveedor caído")
+        yield  # pragma: no cover
 
     async def aclose(self) -> None:
         """No hay recursos que cerrar."""

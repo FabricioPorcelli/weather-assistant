@@ -4,6 +4,9 @@ No usamos el SDK de OpenAI: hacemos un POST HTTP con httpx. Así el mismo
 cliente sirve para Groq, Ollama, OpenCode u otro proveedor compatible.
 """
 
+import json
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, Protocol, Self
 
@@ -30,6 +33,23 @@ class LLMResponse(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list)
 
 
+@dataclass(frozen=True, slots=True)
+class TextDelta:
+    """Fragmento de texto recibido mientras el LLM transmite."""
+
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
+class StreamCompleted:
+    """Fin del stream, con el contenido y los tool calls completos."""
+
+    response: LLMResponse
+
+
+LLMStreamEvent = TextDelta | StreamCompleted
+
+
 class LLMClient(Protocol):
     """Contrato mínimo que necesita el loop del agente."""
 
@@ -38,6 +58,12 @@ class LLMClient(Protocol):
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
     ) -> LLMResponse: ...
+
+    def stream(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ) -> AsyncIterator[LLMStreamEvent]: ...
 
     async def aclose(self) -> None: ...
 
@@ -134,6 +160,110 @@ class OpenAICompatClient:
                 ) from exc
 
         return LLMResponse(content=content, tool_calls=tool_calls)
+
+    async def stream(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ) -> AsyncIterator[LLMStreamEvent]:
+        """Lee el SSE del proveedor y emite texto y tool calls acumulados."""
+        headers = {}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+
+        content_parts: list[str] = []
+        tool_calls: dict[int, dict[str, str]] = {}
+
+        try:
+            async with self._http.stream(
+                "POST",
+                self._endpoint,
+                headers=headers,
+                json={
+                    "model": self._model,
+                    "messages": messages,
+                    "tools": tools,
+                    "tool_choice": "auto",
+                    "stream": True,
+                },
+            ) as response:
+                if response.status_code in (401, 403):
+                    raise LLMError("la API key del LLM es inválida o no tiene permisos")
+                if response.is_error:
+                    raise LLMError(
+                        "el proveedor del LLM respondió con estado "
+                        f"{response.status_code}"
+                    )
+
+                async for line in response.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+
+                    raw = line[5:].strip()
+                    if not raw:
+                        continue
+                    if raw == "[DONE]":
+                        break
+
+                    try:
+                        data = json.loads(raw)
+                    except ValueError as exc:
+                        raise LLMError(
+                            "el proveedor del LLM devolvió un evento inválido"
+                        ) from exc
+
+                    try:
+                        delta = data["choices"][0]["delta"]
+                    except (KeyError, IndexError, TypeError):
+                        continue
+
+                    text = delta.get("content")
+                    if isinstance(text, str) and text:
+                        content_parts.append(text)
+                        yield TextDelta(text)
+
+                    for raw_call in delta.get("tool_calls") or []:
+                        self._accumulate_tool_call(tool_calls, raw_call)
+        except httpx.TimeoutException as exc:
+            raise LLMError("el proveedor del LLM no respondió a tiempo") from exc
+        except httpx.RequestError as exc:
+            raise LLMError("no se pudo conectar con el proveedor del LLM") from exc
+
+        calls = [
+            ToolCall(
+                id=entry["id"] or f"call_{index}",
+                name=entry["name"],
+                arguments=entry["arguments"] or "{}",
+            )
+            for index, entry in sorted(tool_calls.items())
+            if entry["name"]
+        ]
+        yield StreamCompleted(
+            LLMResponse(
+                content="".join(content_parts) or None,
+                tool_calls=calls,
+            )
+        )
+
+    @staticmethod
+    def _accumulate_tool_call(
+        tool_calls: dict[int, dict[str, str]],
+        raw_call: dict[str, Any],
+    ) -> None:
+        """Acumula los fragmentos de un tool call que llegan por streaming."""
+        index = int(raw_call.get("index", 0))
+        entry = tool_calls.setdefault(
+            index,
+            {"id": "", "name": "", "arguments": ""},
+        )
+        if raw_call.get("id"):
+            entry["id"] = str(raw_call["id"])
+
+        function = raw_call.get("function") or {}
+        if function.get("name"):
+            entry["name"] = str(function["name"])
+        if function.get("arguments"):
+            entry["arguments"] += str(function["arguments"])
 
     async def aclose(self) -> None:
         """Cierra las conexiones HTTP."""

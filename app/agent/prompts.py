@@ -39,6 +39,7 @@ def build_system_prompt(
     *,
     now: datetime | None = None,
     max_tool_calls: int = 4,
+    location_label: str | None = None,
 ) -> str:
     """Arma el prompt con la fecha y las reglas del asistente."""
     now = now or datetime.now().astimezone()
@@ -46,12 +47,19 @@ def build_system_prompt(
     month = MONTHS_ES[now.month - 1]
     date_text = f"{weekday} {now.day} de {month} de {now.year}"
     timezone_text = f"{_format_offset(now.strftime('%z'))} ({now.tzname() or 'local'})"
+    location_text = ""
+    if location_label:
+        location_text = (
+            f"Ubicación del contexto: {location_label}.\n"
+            "Usala si el usuario no menciona otra ubicación.\n\n"
+        )
 
     return (
         "Sos un asistente meteorológico que responde en español, "
         "de forma breve y clara.\n\n"
         f"Fecha actual: {date_text} ({now.date().isoformat()}).\n"
-        f"Zona horaria del servidor: {timezone_text}.\n\n"
+        f"Zona horaria del servidor: {timezone_text}.\n"
+        f"{location_text}\n"
         "Reglas obligatorias:\n"
         "1. Usá únicamente información devuelta por las herramientas.\n"
         "   Nunca inventes cifras, fechas ni condiciones.\n"
@@ -62,7 +70,8 @@ def build_system_prompt(
         "4. Si la pregunta no es sobre clima o actividades,\n"
         "   decilo en una frase y ofrecé lo que sí podés hacer.\n"
         "5. Si una herramienta falla o los datos no alcanzan,\n"
-        "   explicalo con honestidad.\n"
+        "   explicalo con honestidad. No ofrezcas fuentes alternativas\n"
+        "   ni herramientas que no estén disponibles.\n"
         "6. Traducí fechas relativas usando la fecha actual:\n"
         '   - "el finde" = próximo sábado y domingo.\n'
         '   - "la semana que viene" = lunes a domingo siguientes.\n'

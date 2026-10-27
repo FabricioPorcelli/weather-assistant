@@ -62,3 +62,9 @@ def test_prompt_requires_date_labels_from_tools():
 
     assert "date_label" in prompt
     assert "No calcules el día de la semana" in prompt
+
+
+def test_prompt_does_not_offer_unavailable_sources():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "No ofrezcas fuentes alternativas" in prompt

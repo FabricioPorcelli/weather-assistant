@@ -5,39 +5,17 @@ validamos y ejecutamos, devolvemos los resultados y repetimos hasta que haya
 una respuesta final.
 """
 
-import json
 from datetime import datetime
 from typing import Any
 
-from app.agent.llm import LLMClient, ToolCall
+from app.agent.llm import LLMClient
+from app.agent.messages import assistant_message, tool_result_message
 from app.agent.prompts import build_system_prompt
 from app.agent.tools import TOOL_DEFINITIONS, execute_tool
 from app.clients.request_cache import RequestWeatherClient
 from app.clients.weather_api import WeatherApi
 
 EMPTY_ANSWER = "No pude generar una respuesta con los datos disponibles."
-
-
-def _assistant_message(
-    content: str | None,
-    tool_calls: list[ToolCall],
-) -> dict[str, Any]:
-    """Arma el mensaje assistant con el formato de OpenAI."""
-    return {
-        "role": "assistant",
-        "content": content,
-        "tool_calls": [
-            {
-                "id": call.id,
-                "type": "function",
-                "function": {
-                    "name": call.name,
-                    "arguments": call.arguments,
-                },
-            }
-            for call in tool_calls
-        ],
-    }
 
 
 async def run_agent(
@@ -79,15 +57,9 @@ async def run_agent(
                 f"{max_tool_calls} llamadas a herramientas."
             )
 
-        messages.append(_assistant_message(response.content, response.tool_calls))
+        messages.append(assistant_message(response.content, response.tool_calls))
 
         for call in response.tool_calls:
             result = await execute_tool(call.name, call.arguments, cached_weather)
-            messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": call.id,
-                    "content": json.dumps(result, ensure_ascii=False),
-                }
-            )
+            messages.append(tool_result_message(call.id, result))
             tool_calls_used += 1

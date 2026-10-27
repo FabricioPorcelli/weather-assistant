@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Query, Request
 from pydantic import ValidationError
 
+from app.agent.llm import LLMClient
 from app.clients.request_cache import RequestWeatherClient
 from app.clients.weather_api import Location
 
@@ -12,6 +13,17 @@ from app.clients.weather_api import Location
 def get_weather_client(request: Request) -> RequestWeatherClient:
     """Envuelve el cliente compartido con caché válida solo para este pedido."""
     return RequestWeatherClient(request.app.state.weather_client)
+
+
+def get_llm_client(request: Request) -> LLMClient:
+    """Devuelve el cliente LLM compartido o falla si no está configurado."""
+    client = request.app.state.llm_client
+    if client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="El LLM no está configurado en el servidor",
+        )
+    return client
 
 
 def get_location(
@@ -39,3 +51,4 @@ def get_location(
 
 LocationDep = Annotated[Location, Depends(get_location)]
 WeatherClientDep = Annotated[RequestWeatherClient, Depends(get_weather_client)]
+LLMClientDep = Annotated[LLMClient, Depends(get_llm_client)]
