@@ -1,7 +1,12 @@
 """Datos de prueba compartidos por los tests de consejos."""
 
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 
+from app.advice.models import (
+    ActivityVerdict,
+    Confidence,
+    DayEvaluation,
+)
 from app.clients.weather_api import CurrentWeather, DailyForecast, Forecast, History
 
 DEFAULT_DAY = date(2026, 10, 27)
@@ -32,6 +37,19 @@ def make_day(
     )
 
 
+def make_forecast_range(
+    *,
+    start: date = DEFAULT_DAY,
+    count: int = 15,
+    **day_kwargs,
+) -> list[DailyForecast]:
+    """Construye una lista de días consecutivos con los mismos valores."""
+    return [
+        make_day(day=start + timedelta(days=index), **day_kwargs)
+        for index in range(count)
+    ]
+
+
 def make_forecast(
     days: list[DailyForecast],
     *,
@@ -48,6 +66,25 @@ def make_history(
 ) -> History:
     """Construye un histórico a partir de sus días."""
     return History(location=location, days=days)
+
+
+def make_evaluation(
+    *,
+    day: date = DEFAULT_DAY,
+    score: int = 100,
+    verdict: ActivityVerdict = ActivityVerdict.IDEAL,
+    confidence: Confidence = Confidence.HIGH,
+    blockers: list[str] | None = None,
+) -> DayEvaluation:
+    """Construye una evaluación ya calculada para tests de ranking."""
+    return DayEvaluation(
+        date=day,
+        score=score,
+        verdict=verdict,
+        reasons=[],
+        blockers=blockers or [],
+        confidence=confidence,
+    )
 
 
 def make_current(

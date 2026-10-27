@@ -45,3 +45,13 @@ WATERING_HOT_TEMP_C: Final = 30.0
 WATERING_HOT_DRY_MM: Final = 2.0
 WATERING_MILD_TEMP_C: Final = 20.0
 WATERING_MILD_DRY_MM: Final = 5.0
+
+# Actividades: puntaje de 0 a 100.
+ACTIVITY_IDEAL_MIN_SCORE: Final = 80
+ACTIVITY_ACCEPTABLE_MIN_SCORE: Final = 50
+ACTIVITY_TEMPERATURE_PENALTY_PER_C: Final = 5
+ACTIVITY_MAX_TEMPERATURE_PENALTY: Final = 60
+
+# Confianza por horizonte, expresada como días de diferencia con el primer día.
+CONFIDENCE_HIGH_MAX_OFFSET: Final = 2
+CONFIDENCE_MEDIUM_MAX_OFFSET: Final = 6
