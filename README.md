@@ -9,7 +9,7 @@ deterministas sobre paraguas, ropa, riego y actividades, usando datos reales de
 
 ## Estado
 
-**Fase 1B — Actividades y mejor día (sin IA)**
+**Fase 2 — Agente LLM en CLI**
 
 - [x] Aplicación FastAPI con configuración tipada.
 - [x] `GET /v1/health`.
@@ -19,9 +19,10 @@ deterministas sobre paraguas, ropa, riego y actividades, usando datos reales de
 - [x] Evaluación de actividades y ranking del mejor día.
 - [x] Endpoints de consejos y actividades con ciudad o coordenadas.
 - [x] Caché en memoria durante un mismo pedido.
-- [x] Errores de dominio traducidos a respuestas HTTP claras.
-- [x] 191 tests sin red con `respx`.
-- [ ] Agente LLM (Fase 2).
+- [x] Agente con tool calling implementado a mano.
+- [x] Cliente LLM compatible con OpenAI Chat Completions.
+- [x] CLI: `python -m app.cli "¿Llevo paraguas en Madrid?"`.
+- [x] 257 tests sin red con `respx`.
 - [ ] Chat con streaming SSE y persistencia (Fase 3).
 
 ## Qué hace por ahora
@@ -34,9 +35,11 @@ El servicio responde sin usar IA:
   próximas 48 h de pronóstico.
 - **Actividades:** evalúa un día o busca el mejor día de un rango para un asado,
   ejercicio, pintura exterior o tender ropa.
+- **Agente en CLI:** interpreta la pregunta, elige herramientas, valida sus
+  argumentos y redacta la respuesta final.
 
 El motor no inventa reglas: todas salen de umbrales configurables y tienen tests
-que cubren sus bordes.
+que cubren sus bordes. El LLM no calcula consejos: solo interpreta y redacta.
 
 ## Requisitos
 
@@ -44,6 +47,7 @@ que cubren sus bordes.
 - Docker y Docker Compose.
 - El repo hermano `weather-api` clonado al lado de este, con su archivo `.env`
   conteniendo una API key válida de Visual Crossing.
+- Una API key de Groq para probar el agente real. Los tests no la necesitan.
 
 La estructura esperada es:
 
@@ -68,9 +72,40 @@ Variables actuales:
 |---|---|---|
 | `WEATHER_API_BASE_URL` | `http://localhost:8000` | Dónde está `weather-api` cuando corrés el asistente sin Docker. |
 | `WEATHER_API_TIMEOUT_SECONDS` | `10` | Cuánto esperar una respuesta antes de considerarla caída. |
+| `WEATHER_API_RETRIES` | `1` | Reintentos ante `502`, `504` o timeout transitorio. |
+| `WEATHER_API_RETRY_DELAY_SECONDS` | `0.5` | Espera entre reintentos. |
 | `ASSISTANT_CORS_ORIGINS` | vacío | Qué páginas web pueden llamar a la API desde el navegador (el dashboard usa el puerto 5500). |
+| `LLM_BASE_URL` | vacío | URL base del proveedor compatible con OpenAI. |
+| `LLM_API_KEY` | vacío | Clave del proveedor. Nunca se versiona. |
+| `LLM_MODEL` | vacío | Modelo que soporta tool calling. |
+| `LLM_TIMEOUT_SECONDS` | `30` | Tiempo máximo de espera del LLM. |
+| `MAX_TOOL_CALLS_PER_TURN` | `4` | Herramientas máximas por pregunta. |
 
 El archivo `.env` está en `.gitignore`: nunca se versiona.
+
+### Configurar Groq
+
+El `.env` ya viene preparado para Groq con `openai/gpt-oss-120b`. Solo falta
+completar la clave:
+
+```env
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=tu_clave_de_groq
+LLM_MODEL=openai/gpt-oss-120b
+```
+
+### Alternativa OpenCode
+
+El `.env` también tiene comentadas las variables para usar la API de OpenCode:
+
+```env
+LLM_BASE_URL=https://opencode.ai/inference/openai/v1
+LLM_API_KEY=tu_clave_oficial_de_opencode
+LLM_MODEL=deepseek-v4.1-flash
+```
+
+Solo funciona si tu cuenta permite usar el modelo desde clientes externos. El
+código no cambia: es el mismo cliente compatible con OpenAI.
 
 ## Endpoints
 
@@ -201,6 +236,34 @@ Cada pedido HTTP usa un envoltorio con memoria temporal. Si durante ese pedido s
 repiten el mismo pronóstico, histórico o clima actual, se reutiliza la respuesta.
 Al terminar el pedido, la memoria se descarta: no se mezclan datos entre pedidos.
 
+## Agente en CLI
+
+Con `weather-api` disponible en `http://localhost:8000` y la clave del LLM en
+`.env`:
+
+```bash
+conda activate weather-assistant
+python -m app.cli "¿Llevo paraguas en Madrid?"
+python -m app.cli "¿Cuál es el mejor día de esta semana para pintar el frente en Córdoba?"
+python -m app.cli "¿Dónde conviene ir el finde, Mar del Plata o Pinamar?"
+```
+
+El agente:
+
+- Lee la fecha actual y la inyecta en el prompt.
+- Puede llamar hasta 4 herramientas por pregunta.
+- Valida todos los argumentos con Pydantic antes de ejecutarlos.
+- Comparte la caché de `weather-api` entre las herramientas de esa pregunta.
+- Devuelve los errores de herramientas al modelo para que pueda corregir o
+  explicar el problema.
+- Incluye `date_label` con el día de la semana ya formateado para evitar que el
+  modelo lo calcule mal.
+- No usa streaming: imprime la respuesta final cuando termina.
+
+Proveedor actual: Groq con `openai/gpt-oss-120b`. El cliente es compatible con
+OpenAI Chat Completions, así que se puede cambiar de proveedor solo con
+variables de entorno.
+
 ## Correr todo con Docker
 
 ```bash
@@ -256,6 +319,7 @@ llamadas HTTP y devuelve respuestas preparadas.
 ```
 app/
 ├── main.py              # app FastAPI, ciclo de vida, CORS y routers
+├── cli.py               # entrada python -m app.cli
 ├── config.py            # settings tipados desde variables de entorno
 ├── errors.py            # errores de dominio -> respuestas HTTP
 ├── api/
@@ -273,23 +337,35 @@ app/
 │   ├── activities.py    # perfiles, vetos y puntaje
 │   ├── best_day.py      # recorte de rango y ranking
 │   └── engine.py        # orquesta datos y reglas
+├── agent/
+│   ├── llm.py           # LLMClient y OpenAICompatClient
+│   ├── tools.py         # esquemas, validación y ejecución
+│   ├── prompts.py       # system prompt con fecha y reglas
+│   └── loop.py          # loop de tool calling
 └── clients/
     ├── weather_api.py   # cliente HTTP, modelos y errores de dominio
     └── request_cache.py # caché temporal por pedido
 tests/
 ├── conftest.py
 ├── helpers.py
+├── fakes.py
 ├── test_activities.py
 ├── test_activities_api.py
 ├── test_advice_api.py
+├── test_agent_loop.py
 ├── test_best_day.py
+├── test_cli.py
 ├── test_clothing.py
 ├── test_config.py
 ├── test_health.py
+├── test_llm_client.py
+├── test_prompt.py
 ├── test_request_cache.py
+├── test_tools.py
 ├── test_umbrella.py
 ├── test_watering.py
-└── test_weather_api.py
+├── test_weather_api.py
+└── test_weather_api_retries.py
 ```
 
 ## Decisiones de diseño
@@ -304,7 +380,14 @@ tests/
   (`LocationNotFound`, `RateLimited`, `UpstreamTimeout`, etc.).
 - **Caché por pedido, no global.** Se ahorra rate limit sin mezclar usuarios ni
   conservar datos viejos indefinidamente.
-- **Sin reintentos automáticos todavía.** Agregarlos sin medir primero puede
-  empeorar el rate limit de `weather-api` (10 pedidos por minuto).
+- **El agente usa Chat Completions directamente.** No usamos SDK ni frameworks
+  de agentes: el loop de tool calling está implementado a mano con `httpx`.
+- **Máximo 4 herramientas por pregunta.** Cada llamada cuenta, incluso si la
+  herramienta devuelve un error.
+- **Tests sin LLM real.** `FakeLLMClient` devuelve respuestas guionadas y permite
+  probar el loop de forma determinista.
+- **Reintento corto solo para fallos transitorios.** Un `502`, `504` o timeout
+  se reintenta una vez tras una espera breve. Un `404` o `429` no se reintenta:
+  repetirlo no ayuda y puede empeorar el rate limit.
 - **La salud es de vida, no de dependencias.** `/v1/health` no consulta a
   `weather-api` para no gastar rate limit ni acoplar los dos servicios.
