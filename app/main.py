@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.api.activities import router as activities_router
 from app.api.advice import router as advice_router
 from app.api.health import router as health_router
 from app.clients.weather_api import WeatherApiClient
@@ -56,3 +57,4 @@ if settings.assistant_cors_origins:
 
 app.include_router(health_router)
 app.include_router(advice_router)
+app.include_router(activities_router)
