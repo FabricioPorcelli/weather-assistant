@@ -9,12 +9,12 @@ deterministas sobre paraguas, ropa, riego y actividades, usando datos reales de
 
 ## Estado
 
-**Fase 2 — Agente LLM en CLI**
+**Fase 3 — API de chat con SSE y persistencia**
 
 - [x] Aplicación FastAPI con configuración tipada.
 - [x] `GET /v1/health`.
 - [x] Cliente async de `weather-api` con timeouts, validación y errores de dominio.
-- [x] Docker Compose con assistant + weather-api + Redis.
+- [x] Docker Compose con assistant + weather-api + PostgreSQL + Redis.
 - [x] Consejos de paraguas, ropa y riego con reglas deterministas.
 - [x] Evaluación de actividades y ranking del mejor día.
 - [x] Endpoints de consejos y actividades con ciudad o coordenadas.
@@ -22,8 +22,11 @@ deterministas sobre paraguas, ropa, riego y actividades, usando datos reales de
 - [x] Agente con tool calling implementado a mano.
 - [x] Cliente LLM compatible con OpenAI Chat Completions.
 - [x] CLI: `python -m app.cli "¿Llevo paraguas en Madrid?"`.
-- [x] 257 tests sin red con `respx`.
-- [ ] Chat con streaming SSE y persistencia (Fase 3).
+- [x] `POST /v1/chat` con streaming SSE real.
+- [x] Sesiones, historial y tool calls persistidos en PostgreSQL.
+- [x] Rate limit por IP y límites de mensaje.
+- [x] 287 tests sin red con `respx`.
+- [ ] Integración con el dashboard (Fase 4).
 
 ## Qué hace por ahora
 
@@ -37,6 +40,8 @@ El servicio responde sin usar IA:
   ejercicio, pintura exterior o tender ropa.
 - **Agente en CLI:** interpreta la pregunta, elige herramientas, valida sus
   argumentos y redacta la respuesta final.
+- **Chat SSE:** el mismo agente por HTTP, con respuesta en streaming, sesiones e
+  historial persistido.
 
 El motor no inventa reglas: todas salen de umbrales configurables y tienen tests
 que cubren sus bordes. El LLM no calcula consejos: solo interpreta y redacta.
@@ -48,6 +53,7 @@ que cubren sus bordes. El LLM no calcula consejos: solo interpreta y redacta.
 - El repo hermano `weather-api` clonado al lado de este, con su archivo `.env`
   conteniendo una API key válida de Visual Crossing.
 - Una API key de Groq para probar el agente real. Los tests no la necesitan.
+- PostgreSQL 16 y Redis. Docker Compose los levanta automáticamente.
 
 La estructura esperada es:
 
@@ -80,6 +86,11 @@ Variables actuales:
 | `LLM_MODEL` | vacío | Modelo que soporta tool calling. |
 | `LLM_TIMEOUT_SECONDS` | `30` | Tiempo máximo de espera del LLM. |
 | `MAX_TOOL_CALLS_PER_TURN` | `4` | Herramientas máximas por pregunta. |
+| `DATABASE_URL` | PostgreSQL local | Conexión a la base de datos. |
+| `REDIS_URL` | `redis://localhost:6379/1` | Almacenamiento del rate limit. |
+| `RATE_LIMIT` | `20/minute` | Límite de pedidos por IP. |
+| `MAX_MESSAGE_CHARS` | `500` | Largo máximo del mensaje de chat. |
+| `HISTORY_TURNS` | `6` | Pares usuario/asistente que se envían al LLM. |
 
 El archivo `.env` está en `.gitignore`: nunca se versiona.
 
@@ -117,6 +128,7 @@ código no cambia: es el mismo cliente compatible con OpenAI.
 | GET | `/v1/advice/watering` | Consejo de riego. |
 | GET | `/v1/activities/{activity}/evaluate` | Evalúa una actividad en un día. |
 | GET | `/v1/activities/{activity}/best-day` | Ranking de mejores días en un rango. |
+| POST | `/v1/chat` | Chat con streaming SSE, sesiones e historial. |
 
 Ubicación: una ciudad **o** un par de coordenadas, nunca ambas.
 
@@ -264,6 +276,65 @@ Proveedor actual: Groq con `openai/gpt-oss-120b`. El cliente es compatible con
 OpenAI Chat Completions, así que se puede cambiar de proveedor solo con
 variables de entorno.
 
+## Chat con streaming SSE
+
+`POST /v1/chat` recibe:
+
+```json
+{
+  "session_id": "opcional",
+  "message": "¿Llevo paraguas en Madrid?",
+  "location": { "city": "Madrid", "label": "Madrid" }
+}
+```
+
+Ejemplo con `curl`:
+
+```bash
+curl -N -X POST http://localhost:8100/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"¿Llevo paraguas en Madrid?","location":{"city":"Madrid"}}'
+```
+
+Eventos:
+
+| Evento | Contenido |
+|---|---|
+| `session` | `session_id` creado o reutilizado. |
+| `tool_call` | Nombre de la herramienta que se está ejecutando. |
+| `advice` | Tarjeta con `kind`: `umbrella`, `clothing`, `watering`, `activity` o `best_day`. |
+| `token` | Fragmento de texto de la respuesta. |
+| `done` | Fin del turno. |
+| `error` | Error controlado durante el stream. |
+
+Si no se envía `session_id`, se crea una sesión nueva. Para continuar una
+conversación, se envía el `session_id` recibido. El historial de los últimos
+`HISTORY_TURNS` pares usuario/asistente se agrega al prompt.
+
+> `EventSource` del navegador solo permite GET. El dashboard debe usar `fetch` +
+> `ReadableStream` para consumir este SSE por POST.
+
+## Base de datos y migraciones
+
+Tablas:
+
+- `sessions`: conversación, fechas y última ubicación mostrada.
+- `messages`: mensajes de usuario y asistente.
+- `tool_calls`: auditoría de herramientas, argumentos y resultados.
+
+Las credenciales locales son usuario `assistant`, contraseña `assistant` y base
+`assistant`.
+
+Aplicar migraciones:
+
+```bash
+alembic upgrade head
+```
+
+En Docker, el contenedor ejecuta `alembic upgrade head` antes de arrancar.
+Los tests usan SQLite async para no depender de Docker; producción usa
+PostgreSQL 16.
+
 ## Correr todo con Docker
 
 ```bash
@@ -275,8 +346,10 @@ docker compose up --build
 - Weather API: http://localhost:8000
 
 El compose construye `weather-api` desde `../weather-api` y reutiliza su `.env`
-para la API key. Redis queda solo dentro de la red de Docker, sin puerto
-publicado.
+para la API key. También levanta PostgreSQL y Redis. PostgreSQL queda accesible
+en `localhost:5432` para desarrollo local. El assistant usa
+`TZ=America/Argentina/Buenos_Aires` para que la fecha del prompt coincida con la
+hora local.
 
 > Si el compose propio de `weather-api` ya está corriendo, detenelo antes:
 > ambos intentarían usar los puertos `8000` (API) y sus contenedores pueden
@@ -290,6 +363,11 @@ Con `weather-api` ya disponible en `http://localhost:8000`:
 conda create -n weather-assistant python=3.13 -y
 conda activate weather-assistant
 python -m pip install -r requirements.txt -r requirements-dev.txt
+
+# Levantá PostgreSQL y Redis desde el compose.
+docker compose up -d postgres redis
+
+alembic upgrade head
 uvicorn app.main:app --reload --port 8100
 ```
 
@@ -318,15 +396,17 @@ llamadas HTTP y devuelve respuestas preparadas.
 
 ```
 app/
-├── main.py              # app FastAPI, ciclo de vida, CORS y routers
+├── main.py              # app FastAPI, ciclo de vida, CORS, limiter y routers
 ├── cli.py               # entrada python -m app.cli
 ├── config.py            # settings tipados desde variables de entorno
 ├── errors.py            # errores de dominio -> respuestas HTTP
+├── limiter.py           # rate limit con slowapi y Redis
 ├── api/
 │   ├── health.py        # GET /v1/health
 │   ├── advice.py        # GET /v1/advice/{kind}
 │   ├── activities.py    # endpoints de actividades
-│   └── dependencies.py  # ubicación y cliente HTTP inyectables
+│   ├── chat.py          # POST /v1/chat
+│   └── dependencies.py  # ubicación, cliente HTTP y LLM inyectables
 ├── advice/
 │   ├── models.py        # Advice, DayEvaluation, BestDayResult
 │   ├── rules_config.py  # umbrales y niveles configurables
@@ -338,13 +418,24 @@ app/
 │   ├── best_day.py      # recorte de rango y ranking
 │   └── engine.py        # orquesta datos y reglas
 ├── agent/
-│   ├── llm.py           # LLMClient y OpenAICompatClient
+│   ├── llm.py           # LLMClient, Chat Completions y streaming
 │   ├── tools.py         # esquemas, validación y ejecución
 │   ├── prompts.py       # system prompt con fecha y reglas
-│   └── loop.py          # loop de tool calling
+│   ├── messages.py      # formato de mensajes assistant/tool
+│   ├── loop.py          # loop de tool calling para CLI
+│   └── streaming.py     # loop con streaming para el chat
+├── chat/
+│   └── service.py       # sesiones, historial, SSE y persistencia
+├── db/
+│   ├── models.py        # sessions, messages y tool_calls
+│   ├── session.py       # engine y sesiones async
+│   └── repositories.py  # consultas de persistencia
 └── clients/
     ├── weather_api.py   # cliente HTTP, modelos y errores de dominio
     └── request_cache.py # caché temporal por pedido
+migrations/
+├── env.py
+└── versions/0001_initial.py
 tests/
 ├── conftest.py
 ├── helpers.py
@@ -354,13 +445,17 @@ tests/
 ├── test_advice_api.py
 ├── test_agent_loop.py
 ├── test_best_day.py
+├── test_chat_api.py
+├── test_chat_repository.py
 ├── test_cli.py
 ├── test_clothing.py
 ├── test_config.py
 ├── test_health.py
 ├── test_llm_client.py
+├── test_llm_streaming.py
 ├── test_prompt.py
 ├── test_request_cache.py
+├── test_streaming_agent.py
 ├── test_tools.py
 ├── test_umbrella.py
 ├── test_watering.py
@@ -371,8 +466,8 @@ tests/
 ## Decisiones de diseño
 
 - **El LLM no decide, redacta.** Las reglas son funciones puras: reciben datos y
-  devuelven un resultado. El modelo solo interpretará la pregunta y explicará el
-  resultado en la Fase 2.
+  devuelven un resultado. El modelo solo interpreta la pregunta y explica el
+  resultado.
 - **“Hoy” sale del pronóstico.** Se usa el primer día que devuelve `weather-api`,
   no el reloj de la computadora, para reducir problemas de zona horaria.
 - **Los errores se traducen en la frontera.** El resto de la app no maneja
@@ -386,6 +481,15 @@ tests/
   herramienta devuelve un error.
 - **Tests sin LLM real.** `FakeLLMClient` devuelve respuestas guionadas y permite
   probar el loop de forma determinista.
+- **Streaming real.** El chat usa `stream: true` de Chat Completions y reenvía
+  cada fragmento de texto como evento SSE.
+- **PostgreSQL en producción, SQLite en tests.** PostgreSQL soporta concurrencia
+  y es la base real; SQLite permite tests rápidos, aislados y sin Docker. Los
+  tipos elegidos (`Uuid`, `JSON`, fechas) funcionan en ambos.
+- **La sesión guarda solo lo necesario.** El LLM recibe los últimos pares
+  usuario/asistente; las herramientas quedan en `tool_calls` para auditoría.
+- **Rate limit con slowapi.** Los contadores van a Redis y, si falla, slowapi
+  cae a memoria para no tumbar la API.
 - **Reintento corto solo para fallos transitorios.** Un `502`, `504` o timeout
   se reintenta una vez tras una espera breve. Un `404` o `429` no se reintenta:
   repetirlo no ayuda y puede empeorar el rate limit.
