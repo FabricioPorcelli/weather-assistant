@@ -1,0 +1,236 @@
+{
+  "locations": {
+    "Madrid": {
+      "current": {
+        "location": "Madrid, España",
+        "temperature_c": 22.0,
+        "feels_like_c": 21.0,
+        "humidity": 50,
+        "conditions": "Parcialmente nublado",
+        "wind_speed_kmh": 10.0,
+        "precipitation_mm": 0.0,
+        "updated_at": "2026-03-04T09:00:00+00:00"
+      },
+      "forecast": [
+        {
+          "date": "2026-03-04",
+          "temp_max_c": 26,
+          "temp_min_c": 15,
+          "temp_c": 20.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 0,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-05",
+          "temp_max_c": 25,
+          "temp_min_c": 14,
+          "temp_c": 19.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 5,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-06",
+          "temp_max_c": 24,
+          "temp_min_c": 13,
+          "temp_c": 18.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 10,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-07",
+          "temp_max_c": 23,
+          "temp_min_c": 12,
+          "temp_c": 17.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 10,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-08",
+          "temp_max_c": 18,
+          "temp_min_c": 8,
+          "temp_c": 13.0,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 0,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-09",
+          "temp_max_c": 20,
+          "temp_min_c": 10,
+          "temp_c": 15.0,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 5,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-10",
+          "temp_max_c": 22,
+          "temp_min_c": 11,
+          "temp_c": 16.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 10,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-11",
+          "temp_max_c": 24,
+          "temp_min_c": 13,
+          "temp_c": 18.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 10,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-12",
+          "temp_max_c": 25,
+          "temp_min_c": 14,
+          "temp_c": 19.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 10,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-13",
+          "temp_max_c": 23,
+          "temp_min_c": 12,
+          "temp_c": 17.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 0,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-14",
+          "temp_max_c": 23,
+          "temp_min_c": 12,
+          "temp_c": 17.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 0,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-15",
+          "temp_max_c": 23,
+          "temp_min_c": 12,
+          "temp_c": 17.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 0,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-16",
+          "temp_max_c": 23,
+          "temp_min_c": 12,
+          "temp_c": 17.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 0,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-17",
+          "temp_max_c": 23,
+          "temp_min_c": 12,
+          "temp_c": 17.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 0,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-18",
+          "temp_max_c": 23,
+          "temp_min_c": 12,
+          "temp_c": 17.5,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": 0,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 10.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        }
+      ],
+      "history": [
+        {
+          "date": "2026-03-01",
+          "temp_max_c": 20.0,
+          "temp_min_c": 10.0,
+          "temp_c": 15.0,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": null,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 8.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-02",
+          "temp_max_c": 20.0,
+          "temp_min_c": 10.0,
+          "temp_c": 15.0,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": null,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 8.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        },
+        {
+          "date": "2026-03-03",
+          "temp_max_c": 20.0,
+          "temp_min_c": 10.0,
+          "temp_c": 15.0,
+          "precipitation_mm": 0.0,
+          "precipitation_probability": null,
+          "conditions": "Despejado",
+          "wind_speed_kmh": 8.0,
+          "sunrise": "07:00:00",
+          "sunset": "19:00:00"
+        }
+      ]
+    }
+  }
+}
