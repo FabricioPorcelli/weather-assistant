@@ -279,6 +279,8 @@ async def execute_tool(
     name: str,
     arguments_json: str,
     client: WeatherApi,
+    *,
+    comfort_offset_c: float = 0.0,
 ) -> dict[str, Any]:
     """Valida los argumentos, ejecuta la herramienta y devuelve JSON."""
     arg_model = TOOL_ARG_MODELS.get(name)
@@ -308,6 +310,7 @@ async def execute_tool(
                 args.location,
                 client,
                 target_date=args.target_date,
+                comfort_offset_c=comfort_offset_c,
             )
         elif name == "get_watering_advice":
             result = await build_advice(

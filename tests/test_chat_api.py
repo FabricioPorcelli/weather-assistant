@@ -8,6 +8,7 @@ import pytest
 
 from app.agent.llm import LLMResponse, ToolCall
 from app.api.dependencies import get_llm_client
+from app.db.models import UserPreference
 from app.db.repositories import (
     get_recent_messages,
     get_session,
@@ -16,7 +17,7 @@ from app.db.repositories import (
 from app.db.session import async_session_factory
 from app.main import app
 from tests.fakes import FailingLLMClient, FakeLLMClient
-from tests.helpers import make_day, make_forecast
+from tests.helpers import make_current, make_day, make_forecast
 
 
 def _tool_call(index: int, name: str, arguments: dict) -> ToolCall:
@@ -154,6 +155,55 @@ async def test_chat_passes_location_context_and_persists_label(
 
     assert session is not None
     assert session.location_label == "Rosario"
+
+
+async def test_chat_applies_user_comfort_offset(
+    db_schema,
+    api_client,
+    api_mock,
+    override_llm,
+):
+    user_id = uuid4()
+    async with async_session_factory() as db:
+        db.add(UserPreference(user_id=user_id, comfort_offset_c=4.0))
+        await db.commit()
+
+    forecast = make_forecast([make_day(temp_max_c=25.0, temp_min_c=15.0)])
+    current = make_current(feels_like_c=14.0)
+    api_mock.get("/v1/forecast/Madrid", params={"days": 15}).mock(
+        return_value=httpx.Response(200, json=forecast.model_dump(mode="json"))
+    )
+    api_mock.get("/v1/weather/Madrid").mock(
+        return_value=httpx.Response(200, json=current.model_dump(mode="json"))
+    )
+    fake_llm = FakeLLMClient(
+        [
+            LLMResponse(
+                tool_calls=[
+                    _tool_call(
+                        1,
+                        "get_clothing_advice",
+                        {"location": {"city": "Madrid"}},
+                    )
+                ]
+            ),
+            LLMResponse(content="Listo."),
+        ]
+    )
+    override_llm(fake_llm)
+
+    events = await _chat(
+        api_client,
+        {
+            "message": "¿Qué me pongo?",
+            "location": {"city": "Madrid"},
+            "user_id": str(user_id),
+        },
+    )
+
+    advice = next(data for name, data in events if name == "advice")
+    assert advice["kind"] == "clothing"
+    assert advice["verdict"] == "capa_intermedia"
 
 
 async def test_second_turn_receives_previous_history(

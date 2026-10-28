@@ -13,6 +13,7 @@ from app.agent.llm import OpenAICompatClient
 from app.api.activities import router as activities_router
 from app.api.advice import router as advice_router
 from app.api.chat import router as chat_router
+from app.api.feedback import router as feedback_router
 from app.api.health import router as health_router
 from app.clients.weather_api import WeatherApiClient
 from app.config import get_settings
@@ -79,3 +80,4 @@ app.include_router(health_router)
 app.include_router(advice_router)
 app.include_router(activities_router)
 app.include_router(chat_router)
+app.include_router(feedback_router)

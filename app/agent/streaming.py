@@ -63,6 +63,7 @@ async def stream_agent(
     history: list[dict[str, str]] | None = None,
     location_label: str | None = None,
     max_tool_calls: int = 4,
+    comfort_offset_c: float = 0.0,
     now: datetime | None = None,
 ) -> AsyncIterator[AgentEvent]:
     """Resuelve una pregunta emitiendo texto y eventos de herramientas."""
@@ -125,7 +126,12 @@ async def stream_agent(
 
         for call in completed.tool_calls:
             yield ToolCallStarted(call.id, call.name, call.arguments)
-            result = await execute_tool(call.name, call.arguments, weather_client)
+            result = await execute_tool(
+                call.name,
+                call.arguments,
+                weather_client,
+                comfort_offset_c=comfort_offset_c,
+            )
             yield ToolCallFinished(call.id, call.name, call.arguments, result)
             messages.append(tool_result_message(call.id, result))
             tool_calls_used += 1

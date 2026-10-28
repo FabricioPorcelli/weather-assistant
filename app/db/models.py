@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     JSON,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     String,
@@ -109,3 +110,24 @@ class ToolCallRecord(Base):
     )
 
     session: Mapped[ChatSession] = relationship(back_populates="tool_calls")
+
+
+class UserPreference(Base):
+    """Preferencia de comodidad de un usuario anónimo."""
+
+    __tablename__ = "user_preferences"
+
+    user_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    comfort_offset_c: Mapped[float] = mapped_column(
+        Float,
+        default=0.0,
+        server_default="0",
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+        server_default=func.now(),
+        nullable=False,
+    )

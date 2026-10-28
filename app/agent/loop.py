@@ -21,6 +21,7 @@ async def run_agent(
     max_tool_calls: int = 4,
     now: datetime | None = None,
     location_label: str | None = None,
+    comfort_offset_c: float = 0.0,
 ) -> str:
     """Resuelve una pregunta usando herramientas hasta obtener texto final."""
     if max_tool_calls < 1:
@@ -57,6 +58,11 @@ async def run_agent(
         messages.append(assistant_message(response.content, response.tool_calls))
 
         for call in response.tool_calls:
-            result = await execute_tool(call.name, call.arguments, cached_weather)
+            result = await execute_tool(
+                call.name,
+                call.arguments,
+                cached_weather,
+                comfort_offset_c=comfort_offset_c,
+            )
             messages.append(tool_result_message(call.id, result))
             tool_calls_used += 1

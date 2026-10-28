@@ -1,4 +1,4 @@
-"""Consultas concretas sobre sesiones, mensajes y tool calls."""
+"""Consultas de persistencia del chat y las preferencias."""
 
 from datetime import UTC, datetime
 from typing import Any
@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import ChatSession, Message, ToolCallRecord
+from app.db.models import ChatSession, Message, ToolCallRecord, UserPreference
 
 
 async def create_session(
@@ -108,3 +108,37 @@ async def get_tool_calls(
         .order_by(ToolCallRecord.created_at.asc())
     )
     return list((await db.scalars(statement)).all())
+
+
+async def get_user_preference(
+    db: AsyncSession,
+    user_id: UUID,
+) -> UserPreference | None:
+    """Busca la preferencia de comodidad de un usuario."""
+    return await db.get(UserPreference, user_id)
+
+
+async def get_comfort_offset(
+    db: AsyncSession,
+    user_id: UUID,
+) -> float:
+    """Devuelve el offset guardado, o 0 si el usuario no tiene preferencia."""
+    preference = await get_user_preference(db, user_id)
+    return preference.comfort_offset_c if preference else 0.0
+
+
+async def save_comfort_offset(
+    db: AsyncSession,
+    user_id: UUID,
+    comfort_offset_c: float,
+) -> UserPreference:
+    """Guarda el offset de comodidad de un usuario."""
+    preference = await get_user_preference(db, user_id)
+    if preference is None:
+        preference = UserPreference(user_id=user_id)
+        db.add(preference)
+
+    preference.comfort_offset_c = comfort_offset_c
+    preference.updated_at = datetime.now(UTC)
+    await db.flush()
+    return preference

@@ -23,6 +23,7 @@ from app.db.repositories import (
     add_message,
     add_tool_call,
     create_session,
+    get_comfort_offset,
     get_recent_messages,
     get_session,
 )
@@ -39,6 +40,7 @@ class ChatRequest(BaseModel):
     """Body de POST /v1/chat."""
 
     session_id: UUID | None = None
+    user_id: UUID | None = None
     message: str = Field(min_length=1)
     location: Location | None = None
 
@@ -60,6 +62,7 @@ class ChatContext:
     history: list[dict[str, str]]
     message: str
     location_label: str | None
+    comfort_offset_c: float
 
 
 def _location_label(location: Location | None) -> str | None:
@@ -103,6 +106,12 @@ async def prepare_chat(
         if location_label:
             session.location_label = location_label
 
+        comfort_offset_c = (
+            await get_comfort_offset(db, payload.user_id)
+            if payload.user_id is not None
+            else 0.0
+        )
+
         await add_message(
             db,
             session_id=session.id,
@@ -116,6 +125,7 @@ async def prepare_chat(
             history=history,
             message=payload.message,
             location_label=location_label or session.location_label,
+            comfort_offset_c=comfort_offset_c,
         )
 
 
@@ -205,6 +215,7 @@ async def stream_chat(
             history=context.history,
             location_label=context.location_label,
             max_tool_calls=settings.max_tool_calls_per_turn,
+            comfort_offset_c=context.comfort_offset_c,
         ):
             if isinstance(event, TokenEvent):
                 yield _sse("token", {"text": event.text})

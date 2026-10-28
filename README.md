@@ -25,6 +25,7 @@ chat. El assistant consulta `weather-api` para resolver consejos y actividades.
 - Expone los consejos por HTTP sin LLM.
 - Ejecuta un agente con tool calling desde la terminal.
 - Ofrece chat con SSE, sesiones e historial persistido.
+- Ajusta el consejo de ropa con feedback de comodidad.
 - Integra el chat en `weather-dashboard` de forma opcional.
 
 ## Requisitos
@@ -105,6 +106,7 @@ uvicorn app.main:app --reload --port 8100
 | GET | `/v1/activities/{activity}/evaluate` |
 | GET | `/v1/activities/{activity}/best-day` |
 | POST | `/v1/chat` |
+| POST | `/v1/feedback` |
 
 Los endpoints de consejos y actividades aceptan `city` o `lat` y `lon`.
 
@@ -214,6 +216,7 @@ Body:
 ```json
 {
   "session_id": "opcional",
+  "user_id": "opcional",
   "message": "¿Llevo paraguas en Madrid?",
   "location": { "city": "Madrid", "label": "Madrid" }
 }
@@ -236,6 +239,33 @@ Sin `session_id` se crea una sesión. El historial enviado al LLM son los últim
 `EventSource` solo permite GET. El dashboard usa `fetch` y `ReadableStream` para
 consumir este SSE por POST.
 
+## Feedback de ropa
+
+El endpoint de feedback ajusta un offset por usuario anónimo:
+
+```bash
+curl -X POST http://localhost:8100/v1/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"00000000-0000-0000-0000-000000000001","feedback":"cold"}'
+```
+
+Valores de `feedback`: `cold`, `just_right` y `hot`.
+
+- `cold` resta 0.5 °C a la temperatura de referencia.
+- `hot` suma 0.5 °C.
+- `just_right` no cambia el offset.
+- El offset queda entre -10 y 10 °C.
+
+El offset se aplica solo al consejo de ropa. No hay login: el dashboard genera un
+UUID anónimo y lo guarda en `localStorage`.
+
+Metodología: actualización incremental con paso de 0.5 °C y límite de ±10 °C. La
+simulación de `tests/test_personalization.py` muestra que el offset converge al
+valor objetivo con feedback consistente.
+
+Limitaciones: no modela actividad, hora del día ni otras preferencias. Si se
+borra `localStorage`, el navegador obtiene otro UUID y pierde el ajuste anterior.
+
 ## Dashboard
 
 [weather-dashboard](https://github.com/FabricioPorcelli/weather-dashboard)
@@ -246,9 +276,12 @@ El chat se abre en un popup sobre el marcador, muestra texto y confianza, y
 guarda las conversaciones en el navegador. Cambiar de punto a más de 5 km inicia
 una conversación nueva. Los puntos usados permiten retomarla.
 
+Después de un consejo de ropa aparecen tres botones de feedback. El navegador
+guarda un UUID anónimo y lo envía con el chat y con el feedback.
+
 ## Base de datos
 
-Tablas: `sessions`, `messages` y `tool_calls`.
+Tablas: `sessions`, `messages`, `tool_calls` y `user_preferences`.
 
 ```bash
 alembic upgrade head
@@ -291,7 +324,7 @@ ruff check .
 ruff format --check .
 ```
 
-302 tests. No requieren red, Docker ni claves: `respx` simula las respuestas HTTP.
+313 tests. No requieren red, Docker ni claves: `respx` simula las respuestas HTTP.
 
 ## Estructura
 
@@ -307,6 +340,7 @@ app/
 │   ├── advice.py
 │   ├── activities.py
 │   ├── chat.py
+│   ├── feedback.py
 │   └── dependencies.py
 ├── advice/
 ├── agent/
@@ -329,5 +363,6 @@ tests/
 - Los reintentos de `weather-api` solo cubren `502`, `504` y timeouts.
 - Los errores de `weather-api` se traducen a errores de dominio.
 - El chat persiste mensajes y tool calls en PostgreSQL.
+- El feedback de ropa se guarda por UUID anónimo en `user_preferences`.
 - Los workflows de GitHub Actions ejecutan lint y tests. Los evals usan
   `workflow_dispatch` y el secreto `GROQ_API_KEY`.
