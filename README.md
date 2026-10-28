@@ -9,7 +9,7 @@ deterministas sobre paraguas, ropa, riego y actividades, usando datos reales de
 
 ## Estado
 
-**Fase 4 — Integración con el dashboard**
+**Fase 5 — Evals y observabilidad**
 
 - [x] Aplicación FastAPI con configuración tipada.
 - [x] `GET /v1/health`.
@@ -26,11 +26,17 @@ deterministas sobre paraguas, ropa, riego y actividades, usando datos reales de
 - [x] Sesiones, historial y tool calls persistidos en PostgreSQL.
 - [x] Rate limit por IP y límites de mensaje.
 - [x] Dashboard con chat opcional en ventana emergente, texto natural y confianza.
-- [x] 289 tests sin red con `respx`.
+- [x] 60 casos de evaluación con fixtures de clima.
+- [x] Runner de evals con métricas, tokens, costo y latencia.
+- [x] Muestra real de 11 casos con `gpt-oss-120b`.
+- [x] Logging JSON por request con `X-Request-ID`.
+- [x] GitHub Actions: lint/tests y evals manuales.
+- [x] 302 tests sin red con `respx`.
+- [ ] Personalización con feedback (Fase 6).
 
 ## Qué hace por ahora
 
-El servicio responde sin usar IA:
+El servicio combina reglas deterministas con un agente LLM:
 
 - **Paraguas:** sí, quizás o no, según probabilidad y lluvia prevista.
 - **Ropa:** nivel de abrigo según temperatura, viento y amplitud térmica.
@@ -352,6 +358,63 @@ En Docker, el contenedor ejecuta `alembic upgrade head` antes de arrancar.
 Los tests usan SQLite async para no depender de Docker; producción usa
 PostgreSQL 16.
 
+## Evals y observabilidad
+
+`evals/cases.yaml` contiene **60 casos** con preguntas, fechas fijas, ubicación,
+fixture de clima y expectativas. Los fixtures viven en `evals/fixtures/` y evitan
+depender de `weather-api` durante la evaluación.
+
+El runner mide:
+
+- selección y secuencia de herramientas;
+- argumentos generados por el LLM;
+- veredicto y mejor fecha;
+- menciones esperadas en la respuesta;
+- **groundedness**: cada número de la respuesta debe aparecer en los resultados
+  de las herramientas, con tolerancia de redondeo;
+- latencia p50/p95;
+- tokens y costo estimado.
+
+Comando:
+
+```bash
+python evals/run_evals.py --models openai/gpt-oss-120b --delay-seconds 4
+```
+
+También acepta `--limit`, `--case` y `--output-dir`.
+
+### Resultado real
+
+La cuota gratuita de Groq limita una corrida completa de 60 casos. Se ejecutó una
+muestra representativa de 11 casos, con cobertura de consejos, actividades,
+ranking, comparación, errores y prompt injection. Los 60 casos quedan definidos
+para correr cuando haya cuota disponible.
+
+| Modelo | Casos | Pass rate | Herramientas | Argumentos | Groundedness | p50 | p95 | Tokens | Costo USD |
+|---|---|---|---|---|---|---|---|---|---|
+| `openai/gpt-oss-120b` | 11 | 1.0 | 1.0 | 1.0 | 1.0 | 7891.91 ms | 12493.99 ms | 47755 | 0.008533 |
+
+Reportes:
+
+- `evals/reports/openai-gpt-oss-120b.json`
+- `evals/reports/openai-gpt-oss-120b.md`
+- `evals/reports/summary.md`
+
+El runner soporta varios modelos a la vez, pero no se comparó un segundo modelo
+para no agotar el límite de la API.
+
+### Logging JSON
+
+Cada request agrega `X-Request-ID` y registra una línea JSON con método, ruta,
+estado y duración. No se guardan mensajes del usuario, ubicaciones, argumentos de
+herramientas ni claves.
+
+### GitHub Actions
+
+- `.github/workflows/ci.yml`: lint y tests en cada push/PR.
+- `.github/workflows/evals.yml`: evals contra el LLM real, solo manual
+  (`workflow_dispatch`) y usando el secreto `GROQ_API_KEY`.
+
 ## Correr todo con Docker
 
 ```bash
@@ -447,9 +510,19 @@ app/
 │   ├── models.py        # sessions, messages y tool_calls
 │   ├── session.py       # engine y sesiones async
 │   └── repositories.py  # consultas de persistencia
+├── observability/
+│   └── logging.py       # middleware JSON y X-Request-ID
 └── clients/
     ├── weather_api.py   # cliente HTTP, modelos y errores de dominio
     └── request_cache.py # caché temporal por pedido
+evals/
+├── cases.yaml           # 60 casos
+├── fixtures/            # clima simulado
+├── run_evals.py         # runner y métricas
+└── reports/             # resultados JSON/Markdown
+.github/workflows/
+├── ci.yml               # lint + tests
+└── evals.yml            # evals manuales
 migrations/
 ├── env.py
 └── versions/0001_initial.py
@@ -467,9 +540,11 @@ tests/
 ├── test_cli.py
 ├── test_clothing.py
 ├── test_config.py
+├── test_eval_metrics.py
 ├── test_health.py
 ├── test_llm_client.py
 ├── test_llm_streaming.py
+├── test_observability.py
 ├── test_prompt.py
 ├── test_request_cache.py
 ├── test_streaming_agent.py
@@ -507,6 +582,14 @@ tests/
   usuario/asistente; las herramientas quedan en `tool_calls` para auditoría.
 - **Rate limit con slowapi.** Los contadores van a Redis y, si falla, slowapi
   cae a memoria para no tumbar la API.
+- **Evals con clima simulado.** Los fixtures aíslan la calidad del agente de la
+  disponibilidad de `weather-api` y permiten repetir los casos.
+- **Groundedness medible.** Todo número de la respuesta se compara con los
+  resultados de herramientas, con tolerancia de redondeo.
+- **Una sola corrida real por límite de cuota.** El runner acepta varios modelos,
+  pero la muestra real se hizo con `gpt-oss-120b`; los 60 casos quedan listos.
+- **Logs sin datos personales.** Se registra método, ruta, estado, duración y
+  `request_id`; nunca el mensaje ni la ubicación.
 - **Reintento corto solo para fallos transitorios.** Un `502`, `504` o timeout
   se reintenta una vez tras una espera breve. Un `404` o `429` no se reintenta:
   repetirlo no ayuda y puede empeorar el rate limit.
