@@ -1,8 +1,22 @@
 # Weather Assistant
 
 Asistente de clima con API HTTP, agente LLM y chat con streaming. Consulta
-[`weather-api`](../weather-api) y aplica reglas deterministas para paraguas,
-ropa, riego y actividades.
+[weather-api](https://github.com/FabricioPorcelli/weather-api) y aplica reglas
+deterministas para paraguas, ropa, riego y actividades.
+
+## Repos relacionados
+
+El proyecto se compone de tres repos que se complementan:
+
+- [weather-api](https://github.com/FabricioPorcelli/weather-api): obtiene y
+  normaliza los datos de clima.
+- [weather-dashboard](https://github.com/FabricioPorcelli/weather-dashboard):
+  muestra el mapa, el clima y el chat.
+- weather-assistant: este repo. Contiene el motor de consejos, el agente LLM y
+  la API de chat.
+
+El dashboard consulta `weather-api` para el clima y `weather-assistant` para el
+chat. El assistant consulta `weather-api` para resolver consejos y actividades.
 
 ## Qué hace
 
@@ -17,8 +31,8 @@ ropa, riego y actividades.
 
 - Python 3.13.
 - Docker y Docker Compose.
-- El repo `weather-api` en `../weather-api`, con su `.env` y una clave de Visual
-  Crossing.
+- El repo [weather-api](https://github.com/FabricioPorcelli/weather-api) en
+  `../weather-api`, con su `.env` y una clave de Visual Crossing.
 - Una clave de Groq para ejecutar el agente real. Los tests no la necesitan.
 
 ## Configuración
@@ -59,8 +73,9 @@ Servicios:
 - Weather API: `http://localhost:8000`
 - PostgreSQL: `localhost:5432`
 
-El compose construye `weather-api` desde `../weather-api` y reutiliza su `.env`.
-El contenedor del assistant ejecuta `alembic upgrade head` antes de Uvicorn.
+El compose construye [weather-api](https://github.com/FabricioPorcelli/weather-api)
+desde `../weather-api` y reutiliza su `.env`. El contenedor del assistant ejecuta
+`alembic upgrade head` antes de Uvicorn.
 
 Si el compose de `weather-api` ya está corriendo, hay que detenerlo antes para
 liberar el puerto `8000`.
@@ -223,8 +238,9 @@ consumir este SSE por POST.
 
 ## Dashboard
 
-`weather-dashboard` consume el chat de forma opcional. Si el assistant está
-apagado, el clima y el pronóstico siguen funcionando.
+[weather-dashboard](https://github.com/FabricioPorcelli/weather-dashboard)
+consume el chat de forma opcional. Si el assistant está apagado, el clima y el
+pronóstico siguen funcionando.
 
 El chat se abre en un popup sobre el marcador, muestra texto y confianza, y
 guarda las conversaciones en el navegador. Cambiar de punto a más de 5 km inicia
