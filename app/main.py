@@ -24,6 +24,7 @@ from app.config import get_settings
 from app.db.session import dispose_engine
 from app.errors import register_exception_handlers
 from app.limiter import limiter
+from app.observability.logging import RequestLoggingMiddleware
 
 
 @asynccontextmanager
@@ -76,6 +77,8 @@ if settings.assistant_cors_origins:
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
+
+app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(health_router)
 app.include_router(advice_router)
