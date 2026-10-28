@@ -83,3 +83,11 @@ def test_prompt_uses_location_from_context_without_asking_again():
 
     assert "Si el contexto ya trae una ciudad" in prompt
     assert "no vuelvas a preguntar" in prompt
+    assert "error de ubicación" in prompt
+
+
+def test_prompt_prefers_best_day_for_location_comparison():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "find_best_day una vez" in prompt
+    assert "no get_forecast" in prompt

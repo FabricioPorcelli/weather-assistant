@@ -25,6 +25,7 @@ async def run_agent(
     *,
     max_tool_calls: int = 4,
     now: datetime | None = None,
+    location_label: str | None = None,
 ) -> str:
     """Resuelve una pregunta usando herramientas hasta obtener texto final."""
     if max_tool_calls < 1:
@@ -38,6 +39,7 @@ async def run_agent(
             "content": build_system_prompt(
                 now=now,
                 max_tool_calls=max_tool_calls,
+                location_label=location_label,
             ),
         },
         {"role": "user", "content": question},

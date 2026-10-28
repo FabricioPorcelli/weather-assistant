@@ -58,6 +58,32 @@ async def test_complete_omits_authorization_without_key():
     assert "Authorization" not in route.calls.last.request.headers
 
 
+async def test_complete_parses_token_usage():
+    payload = {
+        "choices": [{"message": {"content": "Hola"}}],
+        "usage": {
+            "prompt_tokens": 10,
+            "completion_tokens": 5,
+            "total_tokens": 15,
+        },
+    }
+    with respx.mock(base_url="https://llm.test") as mock:
+        mock.post("/v1/chat/completions").mock(
+            return_value=httpx.Response(200, json=payload)
+        )
+        async with OpenAICompatClient(
+            BASE_URL,
+            api_key="clave",
+            model="modelo",
+        ) as client:
+            response = await client.complete(MESSAGES, TOOLS)
+
+    assert response.usage is not None
+    assert response.usage.prompt_tokens == 10
+    assert response.usage.completion_tokens == 5
+    assert response.usage.total_tokens == 15
+
+
 async def test_complete_parses_tool_calls():
     payload = {
         "choices": [

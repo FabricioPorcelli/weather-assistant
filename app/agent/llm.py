@@ -26,11 +26,20 @@ class ToolCall(BaseModel):
     arguments: str
 
 
+class LLMUsage(BaseModel):
+    """Consumo de tokens informado por el proveedor."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
 class LLMResponse(BaseModel):
     """Respuesta normalizada del LLM."""
 
     content: str | None = None
     tool_calls: list[ToolCall] = Field(default_factory=list)
+    usage: LLMUsage | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,6 +148,13 @@ class OpenAICompatClient:
                 "el proveedor del LLM devolvió una respuesta inesperada"
             ) from exc
 
+        usage = None
+        if isinstance(data.get("usage"), dict):
+            try:
+                usage = LLMUsage.model_validate(data["usage"])
+            except Exception:
+                usage = None
+
         content = message.get("content")
         if content is not None and not isinstance(content, str):
             raise LLMError("el proveedor del LLM devolvió contenido inválido")
@@ -159,7 +175,7 @@ class OpenAICompatClient:
                     "el proveedor del LLM devolvió un tool_call inválido"
                 ) from exc
 
-        return LLMResponse(content=content, tool_calls=tool_calls)
+        return LLMResponse(content=content, tool_calls=tool_calls, usage=usage)
 
     async def stream(
         self,
