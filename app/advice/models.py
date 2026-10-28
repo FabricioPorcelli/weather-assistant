@@ -48,11 +48,7 @@ class Reason(BaseModel):
 
 
 class Advice(BaseModel):
-    """Resultado común de todos los consejos.
-
-    `summary` es una frase neutra: el LLM la usará como base para redactar,
-    pero no decide el veredicto.
-    """
+    """Resultado común de los consejos."""
 
     kind: AdviceKind
     verdict: str = Field(min_length=1)

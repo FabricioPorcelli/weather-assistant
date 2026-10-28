@@ -1,8 +1,4 @@
-"""Endpoint de salud del servicio.
-
-Es un chequeo de vida: responde si el proceso está escuchando. No consulta a
-weather-api para no gastar rate limit ni acoplar el arranque a otro servicio.
-"""
+"""Chequeo de vida del servicio."""
 
 from typing import Literal
 

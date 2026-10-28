@@ -1,8 +1,4 @@
-"""Configuración tipada de la aplicación, cargada desde variables de entorno.
-
-Los valores tienen defaults seguros para desarrollo local. El archivo .env es
-opcional y nunca se versiona: solo se versiona .env.example con placeholders.
-"""
+"""Configuración cargada desde variables de entorno."""
 
 from functools import lru_cache
 from typing import Annotated
@@ -33,8 +29,7 @@ class Settings(BaseSettings):
     max_message_chars: int = 500
     history_turns: int = 6
 
-    # NoDecode evita que pydantic-settings intente interpretar el string como
-    # JSON antes de que corra el validador que separa por comas.
+    # NoDecode permite separar por comas antes de que Pydantic parsee el valor.
     assistant_cors_origins: Annotated[list[str], NoDecode] = []
 
     llm_base_url: str = ""
@@ -138,8 +133,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Devuelve la configuración una sola vez por proceso.
-
-    Al quedar cacheada, cambiar el .env requiere reiniciar el servicio.
-    """
+    """Devuelve la configuración cacheada por proceso."""
     return Settings()

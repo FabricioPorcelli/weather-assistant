@@ -1,8 +1,4 @@
-"""Umbrales y niveles del motor de consejos.
-
-Estos valores son heurísticas iniciales, no verdades científicas. Viven acá
-para poder ajustarlos con tests y evals sin tocar la lógica de cada regla.
-"""
+"""Umbrales y niveles configurables del motor."""
 
 from dataclasses import dataclass
 from typing import Final

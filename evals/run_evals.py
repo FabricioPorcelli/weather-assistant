@@ -1,9 +1,4 @@
-"""Runner de evals contra un LLM real, con clima simulado por fixtures.
-
-Uso:
-    python evals/run_evals.py
-    python evals/run_evals.py --models openai/gpt-oss-120b --limit 10
-"""
+"""Runner de evals con LLM real y clima simulado."""
 
 import argparse
 import asyncio

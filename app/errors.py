@@ -1,8 +1,4 @@
-"""Traducción centralizada de excepciones de dominio a respuestas HTTP.
-
-Los routers delegan la lógica y no atrapan excepciones: al registrar los
-handlers una sola vez, cualquier ruta responde igual.
-"""
+"""Traduce errores de dominio a respuestas HTTP."""
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse

@@ -116,12 +116,7 @@ def _format_date_label(value: str) -> str:
 
 
 def _add_date_labels(value: Any) -> None:
-    """Agrega etiquetas legibles junto a cada fecha del resultado.
-
-    El modelo no tiene que calcular el día de la semana y no puede equivocarse
-    al nombrarlo. Esos campos extra viven solo en el resultado de la herramienta,
-    no en el contrato HTTP del motor.
-    """
+    """Agrega date_label a cada fecha para que el modelo no calcule el día."""
     if isinstance(value, list):
         for item in value:
             _add_date_labels(item)

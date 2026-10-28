@@ -1,9 +1,4 @@
-"""Cliente HTTP async para consumir weather-api.
-
-Traduce el contrato JSON de weather-api a modelos Pydantic y convierte los
-errores HTTP o de red en excepciones de dominio. Así el resto de la aplicación
-no necesita conocer códigos de estado ni detalles de httpx.
-"""
+"""Cliente HTTP async de weather-api."""
 
 import asyncio
 from datetime import date, datetime, time

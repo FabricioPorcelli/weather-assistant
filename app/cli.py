@@ -1,8 +1,4 @@
-"""CLI para conversar con el agente desde la terminal.
-
-Uso:
-    python -m app.cli "¿Llevo paraguas en Madrid?"
-"""
+"""Entrada de terminal para el agente."""
 
 import argparse
 import asyncio

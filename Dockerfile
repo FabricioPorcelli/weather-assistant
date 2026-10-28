@@ -1,9 +1,7 @@
-# Imagen base: Python 3.13 liviano, misma versión menor que el proyecto.
 FROM python:3.13-slim
 
 WORKDIR /app
 
-# Logs sin buffer y sin archivos .pyc dentro del contenedor.
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 

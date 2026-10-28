@@ -1,9 +1,4 @@
-"""Loop de tool calling implementado a mano.
-
-El objetivo es que el flujo sea visible: el LLM pide herramientas, nosotros
-validamos y ejecutamos, devolvemos los resultados y repetimos hasta que haya
-una respuesta final.
-"""
+"""Loop de tool calling para el CLI."""
 
 from datetime import datetime
 from typing import Any

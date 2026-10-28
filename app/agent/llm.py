@@ -1,8 +1,4 @@
-"""Cliente LLM delgado contra APIs compatibles con OpenAI Chat Completions.
-
-No usamos el SDK de OpenAI: hacemos un POST HTTP con httpx. Así el mismo
-cliente sirve para Groq, Ollama, OpenCode u otro proveedor compatible.
-"""
+"""Cliente HTTP para APIs compatibles con OpenAI Chat Completions."""
 
 import json
 from collections.abc import AsyncIterator

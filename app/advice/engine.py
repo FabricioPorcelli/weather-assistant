@@ -1,9 +1,4 @@
-"""Orquestador del motor de consejos.
-
-Este módulo decide qué datos pedir a weather-api y delega la decisión en una
-regla pura. Las reglas no hacen HTTP: reciben datos y devuelven un `Advice`,
-`DayEvaluation` o `BestDayResult`.
-"""
+"""Orquesta consultas a weather-api y reglas puras."""
 
 from datetime import date, timedelta
 

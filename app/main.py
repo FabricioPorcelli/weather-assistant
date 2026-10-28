@@ -1,9 +1,4 @@
-"""Punto de entrada de la aplicación.
-
-Crea la instancia de FastAPI, administra el ciclo de vida del cliente HTTP,
-configura CORS y monta los routers.
-Se ejecuta con: uvicorn app.main:app
-"""
+"""Aplicación FastAPI del asistente."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager

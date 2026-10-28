@@ -1,8 +1,4 @@
-"""Rate limiting por IP con slowapi y Redis.
-
-Si Redis no responde, slowapi usa un almacenamiento en memoria: el límite sigue
-aplicándose por proceso y la API no se cae.
-"""
+"""Rate limit por IP con slowapi y Redis."""
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address

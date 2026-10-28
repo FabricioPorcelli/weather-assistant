@@ -1,10 +1,4 @@
-"""Caché en memoria que vive durante un solo pedido HTTP.
-
-El cliente HTTP real se comparte en toda la aplicación. Este envoltorio guarda
-las respuestas ya pedidas mientras se atiende un pedido y luego se descarta:
-así se ahorra rate limit sin mezclar datos entre usuarios ni conservarlos
-durante demasiado tiempo.
-"""
+"""Caché en memoria durante un solo request."""
 
 from datetime import date
 

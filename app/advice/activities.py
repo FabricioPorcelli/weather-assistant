@@ -1,9 +1,4 @@
-"""Perfiles y puntaje de actividades al aire libre.
-
-Cada perfil define vetos (condiciones que descartan el día) y penalizaciones
-que restan puntos. Las reglas son funciones puras: reciben un día y devuelven
-una evaluación, sin hacer HTTP.
-"""
+"""Perfiles y puntaje de actividades al aire libre."""
 
 from dataclasses import dataclass
 from typing import Final, Literal
