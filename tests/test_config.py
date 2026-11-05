@@ -50,6 +50,62 @@ def test_default_settings(monkeypatch):
     assert settings.history_turns == 6
 
 
+def test_postgres_scheme_is_normalized(monkeypatch):
+    _settings_without_env_file(monkeypatch)
+    monkeypatch.setenv("DATABASE_URL", "postgres://user:pass@host/db")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.database_url.startswith("postgresql+asyncpg://user:pass@host/db")
+
+
+def test_postgresql_scheme_is_normalized(monkeypatch):
+    _settings_without_env_file(monkeypatch)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@host/db")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.database_url.startswith("postgresql+asyncpg://user:pass@host/db")
+
+
+def test_sslmode_is_renamed_to_ssl(monkeypatch):
+    _settings_without_env_file(monkeypatch)
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://user:pass@host/db?sslmode=require",
+    )
+
+    settings = Settings(_env_file=None)
+
+    assert settings.database_url.endswith("?ssl=require")
+    assert "sslmode" not in settings.database_url
+
+
+def test_channel_binding_is_removed(monkeypatch):
+    _settings_without_env_file(monkeypatch)
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://user:pass@host/db"
+        "?sslmode=require&channel_binding=require",
+    )
+
+    settings = Settings(_env_file=None)
+
+    assert settings.database_url.endswith("?ssl=require")
+    assert "sslmode" not in settings.database_url
+    assert "channel_binding" not in settings.database_url
+
+
+def test_database_url_without_query_params_is_unchanged(monkeypatch):
+    _settings_without_env_file(monkeypatch)
+    url = "postgresql+asyncpg://user:pass@host/db"
+    monkeypatch.setenv("DATABASE_URL", url)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.database_url == url
+
+
 def test_cors_origins_are_split_by_comma(monkeypatch):
     monkeypatch.setenv(
         "ASSISTANT_CORS_ORIGINS",

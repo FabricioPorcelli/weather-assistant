@@ -21,4 +21,4 @@ COPY migrations ./migrations
 EXPOSE 8100
 
 # 0.0.0.0 permite recibir conexiones desde fuera del contenedor.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8100"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8100} --proxy-headers --forwarded-allow-ips='*' --root-path \"${ROOT_PATH:-}\""]

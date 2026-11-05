@@ -91,7 +91,25 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def _validate_database_url(cls, value: str) -> str:
-        """Acepta PostgreSQL en producción y SQLite solo para tests."""
+        """Normaliza URLs de proveedores y acepta PostgreSQL o SQLite de tests."""
+        if value.startswith(("postgres://", "postgresql://")):
+            value = "postgresql+asyncpg://" + value.split("://", 1)[1]
+
+        if value.startswith("postgresql+asyncpg://"):
+            base, separator, query = value.partition("?")
+            if separator:
+                params = []
+                for param in query.split("&"):
+                    if not param:
+                        continue
+                    key, _, param_value = param.partition("=")
+                    if key == "channel_binding":
+                        continue
+                    if key == "sslmode":
+                        key = "ssl"
+                    params.append(f"{key}={param_value}" if "=" in param else key)
+                value = f"{base}?{'&'.join(params)}" if params else base
+
         if not value.startswith(("postgresql+asyncpg://", "sqlite+aiosqlite://")):
             raise ValueError(
                 "database_url debe usar postgresql+asyncpg:// o sqlite+aiosqlite://"
