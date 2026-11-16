@@ -1,67 +1,33 @@
 services:
   assistant:
     build: .
-    ports:
-      - "8100:8100"
-    env_file: .env
+    expose:
+      - "8100"
     environment:
-      # Dentro de la red de Compose cada servicio se resuelve por su nombre.
-      WEATHER_API_BASE_URL: http://weather-api:8000
-      DATABASE_URL: postgresql+asyncpg://assistant:assistant@postgres:5432/assistant
-      REDIS_URL: redis://redis:6379/1
-      TZ: America/Argentina/Buenos_Aires
-    command:
-      - sh
-      - -c
-      - alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8100
-    depends_on:
-      weather-api:
-        condition: service_started
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  weather-api:
-    build:
-      context: ../weather-api
-    env_file:
-      - ../weather-api/.env
-    environment:
-      REDIS_URL: redis://redis:6379/0
-    ports:
-      - "8000:8000"
-    depends_on:
-      redis:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:16-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: assistant
-      POSTGRES_PASSWORD: assistant
-      POSTGRES_DB: assistant
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+      WEATHER_API_BASE_URL: ${WEATHER_API_BASE_URL}
+      WEATHER_API_TIMEOUT_SECONDS: ${WEATHER_API_TIMEOUT_SECONDS:-10}
+      WEATHER_API_RETRIES: ${WEATHER_API_RETRIES:-1}
+      WEATHER_API_RETRY_DELAY_SECONDS: ${WEATHER_API_RETRY_DELAY_SECONDS:-0.5}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      ASSISTANT_CORS_ORIGINS: ${ASSISTANT_CORS_ORIGINS:-}
+      RATE_LIMIT: ${RATE_LIMIT:-20/minute}
+      MAX_MESSAGE_CHARS: ${MAX_MESSAGE_CHARS:-500}
+      HISTORY_TURNS: ${HISTORY_TURNS:-6}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      MAX_TOOL_CALLS_PER_TURN: ${MAX_TOOL_CALLS_PER_TURN:-4}
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+      PORT: ${PORT:-8100}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U assistant -d assistant"]
-      interval: 5s
-      timeout: 3s
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/v1/health')
+      interval: 10s
+      timeout: 5s
       retries: 5
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-volumes:
-  postgres-data:
-  redis-data:
+      start_period: 20s
