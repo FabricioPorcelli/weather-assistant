@@ -54,6 +54,8 @@ Variables principales:
 | `LLM_BASE_URL` | `https://api.groq.com/openai/v1` |
 | `LLM_API_KEY` | vacío |
 | `LLM_MODEL` | `openai/gpt-oss-120b` |
+| `LLM_SESSION_HEADER` | vacío |
+| `LLM_USER_AGENT` | `weather-assistant/0.1` |
 | `DATABASE_URL` | `postgresql+asyncpg://assistant:assistant@localhost:5432/assistant` |
 | `REDIS_URL` | `redis://localhost:6379/1` |
 | `ASSISTANT_CORS_ORIGINS` | `http://localhost:5500,http://127.0.0.1:5500` |
@@ -66,16 +68,22 @@ El resto está documentado en `.env.example`.
 ### OpenCode como proveedor
 
 OpenCode expone una API compatible con OpenAI Chat Completions, con soporte de
-herramientas y streaming. Para usar el pago por uso:
+herramientas y streaming. La clave se crea en
+[OpenCode Console](https://opencode.ai/console); no es la misma de Groq. Los
+modelos gratuitos solo funcionan dentro de OpenCode: desde este cliente reciben
+`403`.
+
+Para el plan **Go** (el más conveniente si ya lo tenés):
 
 ```env
-LLM_BASE_URL=https://opencode.ai/inference/openai/v1
+LLM_BASE_URL=https://opencode.ai/inference/go/openai/v1
 LLM_API_KEY=oc_sk_...
 LLM_MODEL=mimo-v2.6-flash
+LLM_SESSION_HEADER=x-opencode-session
 ```
 
-La clave se crea en [OpenCode Console](https://opencode.ai/console). Los modelos
-gratuitos solo funcionan dentro de OpenCode: desde este cliente reciben `403`.
+El asistente envía `x-opencode-session` con el id de la conversación y un
+User-Agent propio (`weather-assistant/0.1`), como pide Go.
 
 Modelos con tool calling y precios aproximados por millón de tokens
 (entrada/salida):
@@ -87,11 +95,9 @@ Modelos con tool calling y precios aproximados por millón de tokens
 | `deepseek-v4.1-flash` | 0.15 / 0.60 | Buen equilibrio |
 | `glm-5.3-flash` | 0.15 / 0.50 | Alternativa |
 
-Si usás el plan **Go**, la base es
-`https://opencode.ai/inference/go/openai/v1` y hay que enviar el header
-`x-opencode-session`. El cliente actual todavía no lo agrega; para ese plan
-habría que sumar ese soporte. Para un asistente fuera de OpenCode conviene el
-pago por uso.
+Para pago por uso, quitá `LLM_SESSION_HEADER` y usá
+`LLM_BASE_URL=https://opencode.ai/inference/openai/v1`. Go está pensado para
+agentes de código; si el uso crece, revisá las condiciones del plan.
 
 ## Docker
 
