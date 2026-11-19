@@ -6,6 +6,8 @@ from typing import Annotated
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from app import __version__
+
 
 class Settings(BaseSettings):
     """Valores de configuración del asistente."""
@@ -36,6 +38,8 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = ""
     llm_timeout_seconds: float = 30.0
+    llm_session_header: str = ""
+    llm_user_agent: str = f"weather-assistant/{__version__}"
     max_tool_calls_per_turn: int = 4
 
     @field_validator("weather_api_base_url")
@@ -87,6 +91,12 @@ class Settings(BaseSettings):
         if value and not value.startswith(("http://", "https://")):
             raise ValueError("llm_base_url debe empezar con http:// o https://")
         return value
+
+    @field_validator("llm_session_header", "llm_user_agent")
+    @classmethod
+    def _strip_llm_metadata(cls, value: str) -> str:
+        """Limpia espacios de headers opcionales del proveedor."""
+        return value.strip()
 
     @field_validator("database_url")
     @classmethod

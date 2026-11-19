@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import sys
+from uuid import uuid4
 
 from app.agent.llm import LLMError, OpenAICompatClient
 from app.agent.loop import run_agent
@@ -38,12 +39,15 @@ async def _run(question: str, settings: Settings) -> str:
             api_key=settings.llm_api_key,
             model=settings.llm_model,
             timeout=settings.llm_timeout_seconds,
+            session_header=settings.llm_session_header,
+            user_agent=settings.llm_user_agent,
         ) as llm:
             return await run_agent(
                 question,
                 weather_client,
                 llm,
                 max_tool_calls=settings.max_tool_calls_per_turn,
+                session_id=f"ses_{uuid4()}",
             )
 
 

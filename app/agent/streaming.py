@@ -65,6 +65,7 @@ async def stream_agent(
     max_tool_calls: int = 4,
     comfort_offset_c: float = 0.0,
     now: datetime | None = None,
+    session_id: str | None = None,
 ) -> AsyncIterator[AgentEvent]:
     """Resuelve una pregunta emitiendo texto y eventos de herramientas."""
     if max_tool_calls < 1:
@@ -90,7 +91,11 @@ async def stream_agent(
         content_parts: list[str] = []
         completed = None
 
-        async for event in llm.stream(messages, TOOL_DEFINITIONS):
+        async for event in llm.stream(
+            messages,
+            TOOL_DEFINITIONS,
+            session_id=session_id,
+        ):
             if isinstance(event, TextDelta):
                 content_parts.append(event.text)
                 yield TokenEvent(event.text)

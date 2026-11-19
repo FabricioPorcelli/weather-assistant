@@ -40,6 +40,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             api_key=settings.llm_api_key,
             model=settings.llm_model,
             timeout=settings.llm_timeout_seconds,
+            session_header=settings.llm_session_header,
+            user_agent=settings.llm_user_agent,
         )
 
     try:

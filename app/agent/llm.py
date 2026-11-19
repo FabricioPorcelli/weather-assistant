@@ -62,12 +62,16 @@ class LLMClient(Protocol):
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ) -> LLMResponse: ...
 
     def stream(
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ) -> AsyncIterator[LLMStreamEvent]: ...
 
     async def aclose(self) -> None: ...
@@ -83,6 +87,8 @@ class OpenAICompatClient:
         api_key: str,
         model: str,
         timeout: float = 30.0,
+        session_header: str = "",
+        user_agent: str = "",
     ) -> None:
         base_url = base_url.strip().rstrip("/")
         if not base_url.startswith(("http://", "https://")):
@@ -95,17 +101,30 @@ class OpenAICompatClient:
         self._endpoint = f"{base_url}/chat/completions"
         self._model = model.strip()
         self._api_key = api_key.strip()
-        self._http = httpx.AsyncClient(timeout=timeout)
+        self._session_header = session_header.strip()
+        self._http = httpx.AsyncClient(
+            timeout=timeout,
+            headers={"User-Agent": user_agent.strip()} if user_agent.strip() else None,
+        )
+
+    def _headers(self, session_id: str | None) -> dict[str, str]:
+        """Arma los headers de autenticación y de sesión del proveedor."""
+        headers = {}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+        if self._session_header and session_id:
+            headers[self._session_header] = session_id
+        return headers
 
     async def complete(
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ) -> LLMResponse:
         """Envía mensajes y herramientas, y normaliza la respuesta."""
-        headers = {}
-        if self._api_key:
-            headers["Authorization"] = f"Bearer {self._api_key}"
+        headers = self._headers(session_id)
 
         try:
             response = await self._http.post(
@@ -177,11 +196,11 @@ class OpenAICompatClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ) -> AsyncIterator[LLMStreamEvent]:
         """Lee el SSE del proveedor y emite texto y tool calls acumulados."""
-        headers = {}
-        if self._api_key:
-            headers["Authorization"] = f"Bearer {self._api_key}"
+        headers = self._headers(session_id)
 
         content_parts: list[str] = []
         tool_calls: dict[int, dict[str, str]] = {}

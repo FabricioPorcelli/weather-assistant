@@ -22,6 +22,7 @@ async def run_agent(
     now: datetime | None = None,
     location_label: str | None = None,
     comfort_offset_c: float = 0.0,
+    session_id: str | None = None,
 ) -> str:
     """Resuelve una pregunta usando herramientas hasta obtener texto final."""
     if max_tool_calls < 1:
@@ -43,7 +44,11 @@ async def run_agent(
     tool_calls_used = 0
 
     while True:
-        response = await llm.complete(messages, TOOL_DEFINITIONS)
+        response = await llm.complete(
+            messages,
+            TOOL_DEFINITIONS,
+            session_id=session_id,
+        )
 
         if not response.tool_calls:
             content = (response.content or "").strip()

@@ -103,6 +103,7 @@ async def test_chat_streams_events_and_persists(
     assert names[-1] == "done"
 
     session_id = UUID(events[0][1]["session_id"])
+    assert fake_llm.calls[0]["session_id"] == f"ses_{session_id}"
     advice = next(data for name, data in events if name == "advice")
     assert advice["kind"] == "umbrella"
     assert advice["verdict"] == "yes"

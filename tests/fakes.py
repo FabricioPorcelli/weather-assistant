@@ -42,11 +42,14 @@ class FakeLLMClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ) -> LLMResponse:
         self.calls.append(
             {
                 "messages": deepcopy(messages),
                 "tools": deepcopy(tools),
+                "session_id": session_id,
             }
         )
         if not self.responses:
@@ -57,11 +60,14 @@ class FakeLLMClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ):
         self.calls.append(
             {
                 "messages": deepcopy(messages),
                 "tools": deepcopy(tools),
+                "session_id": session_id,
             }
         )
         if not self.responses:
@@ -85,6 +91,8 @@ class FailingLLMClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ) -> LLMResponse:
         raise LLMError("proveedor caído")
 
@@ -92,6 +100,8 @@ class FailingLLMClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ):
         raise LLMError("proveedor caído")
         yield  # pragma: no cover

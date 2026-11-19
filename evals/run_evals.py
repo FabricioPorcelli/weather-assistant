@@ -163,15 +163,22 @@ class RecordingLLMClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ) -> LLMResponse:
         if self.delay_seconds > 0:
             await asyncio.sleep(self.delay_seconds)
         started_at = time.perf_counter()
-        response = await self.inner.complete(messages, tools)
+        response = await self.inner.complete(
+            messages,
+            tools,
+            session_id=session_id,
+        )
         self.calls.append(
             {
                 "messages": deepcopy(messages),
                 "response": response,
+                "session_id": session_id,
                 "duration_ms": round(
                     (time.perf_counter() - started_at) * 1000,
                     2,
@@ -184,8 +191,14 @@ class RecordingLLMClient:
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        *,
+        session_id: str | None = None,
     ):
-        async for event in self.inner.stream(messages, tools):
+        async for event in self.inner.stream(
+            messages,
+            tools,
+            session_id=session_id,
+        ):
             yield event
 
     async def aclose(self) -> None:
@@ -413,6 +426,7 @@ async def run_case(
             max_tool_calls=4,
             now=now,
             location_label=location_label,
+            session_id=f"ses_{case['id']}",
         )
     except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"

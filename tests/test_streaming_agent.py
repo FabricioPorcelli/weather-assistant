@@ -85,10 +85,12 @@ async def test_streaming_includes_history_and_location_in_messages():
         fake_llm,
         history=history,
         location_label="Rosario",
+        session_id="ses_test",
     )
 
     messages = fake_llm.calls[0]["messages"]
     assert "Ubicación del contexto: Rosario" in messages[0]["content"]
+    assert fake_llm.calls[0]["session_id"] == "ses_test"
     assert messages[1:3] == history
     assert messages[-1] == {"role": "user", "content": "¿Y mañana?"}
 

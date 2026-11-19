@@ -216,6 +216,7 @@ async def stream_chat(
             location_label=context.location_label,
             max_tool_calls=settings.max_tool_calls_per_turn,
             comfort_offset_c=context.comfort_offset_c,
+            session_id=f"ses_{context.session_id}",
         ):
             if isinstance(event, TokenEvent):
                 yield _sse("token", {"text": event.text})

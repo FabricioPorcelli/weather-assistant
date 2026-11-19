@@ -40,6 +40,28 @@ async def test_complete_sends_model_messages_and_tools():
     assert request.headers["Authorization"] == "Bearer clave"
 
 
+async def test_complete_sends_session_header_and_user_agent():
+    with respx.mock(base_url="https://llm.test") as mock:
+        route = mock.post("/v1/chat/completions").mock(
+            return_value=httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": "Hola"}}]},
+            )
+        )
+        async with OpenAICompatClient(
+            BASE_URL,
+            api_key="clave",
+            model="modelo",
+            session_header="x-opencode-session",
+            user_agent="weather-assistant/test",
+        ) as client:
+            await client.complete(MESSAGES, TOOLS, session_id="ses_123")
+
+    request = route.calls.last.request
+    assert request.headers["x-opencode-session"] == "ses_123"
+    assert request.headers["user-agent"] == "weather-assistant/test"
+
+
 async def test_complete_omits_authorization_without_key():
     with respx.mock(base_url="https://llm.test") as mock:
         route = mock.post("/v1/chat/completions").mock(
