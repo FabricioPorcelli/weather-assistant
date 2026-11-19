@@ -19,6 +19,9 @@ from pydantic import (
 DEFAULT_FORECAST_DAYS = 5
 MIN_FORECAST_DAYS = 1
 MAX_FORECAST_DAYS = 15
+DEFAULT_HOURLY_HOURS = 24
+MIN_HOURLY_HOURS = 1
+MAX_HOURLY_HOURS = 48
 RETRYABLE_STATUS_CODES = frozenset({502, 504})
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -127,6 +130,27 @@ class Forecast(BaseModel):
     days: list[DailyForecast] = Field(min_length=1)
 
 
+class HourlyForecast(BaseModel):
+    """Una hora del pronóstico local de la ubicación."""
+
+    datetime: datetime
+    temperature_c: float
+    feels_like_c: float
+    humidity: int = Field(ge=0, le=100)
+    precipitation_mm: float = Field(default=0.0, ge=0)
+    precipitation_probability: int | None = Field(default=None, ge=0, le=100)
+    conditions: str
+    wind_speed_kmh: float = Field(ge=0)
+    icon: str = ""
+
+
+class HourlyForecastResponse(BaseModel):
+    """Pronóstico horario devuelto por weather-api."""
+
+    location: str
+    hours: list[HourlyForecast] = Field(min_length=1)
+
+
 class History(BaseModel):
     """Histórico diario devuelto por weather-api."""
 
@@ -142,6 +166,10 @@ class WeatherApi(Protocol):
     async def get_forecast(
         self, location: Location, days: int = DEFAULT_FORECAST_DAYS
     ) -> Forecast: ...
+
+    async def get_hourly(
+        self, location: Location, hours: int = DEFAULT_HOURLY_HOURS
+    ) -> HourlyForecastResponse: ...
 
     async def get_history(
         self, location: Location, start: date, end: date
@@ -191,6 +219,19 @@ class WeatherApiClient:
         path = self._resource_path("forecast", location)
         data = await self._get_json(path, params={"days": days})
         return self._parse(Forecast, data)
+
+    async def get_hourly(
+        self, location: Location, hours: int = DEFAULT_HOURLY_HOURS
+    ) -> HourlyForecastResponse:
+        """Obtiene hasta 48 horas de pronóstico local."""
+        if not MIN_HOURLY_HOURS <= hours <= MAX_HOURLY_HOURS:
+            raise ValueError(
+                f"hours debe estar entre {MIN_HOURLY_HOURS} y {MAX_HOURLY_HOURS}"
+            )
+
+        path = self._resource_path("hourly", location)
+        data = await self._get_json(path, params={"hours": hours})
+        return self._parse(HourlyForecastResponse, data)
 
     async def get_history(self, location: Location, start: date, end: date) -> History:
         """Obtiene el histórico diario de un rango inclusivo de fechas."""

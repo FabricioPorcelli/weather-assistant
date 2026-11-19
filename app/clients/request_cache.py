@@ -4,14 +4,17 @@ from datetime import date
 
 from app.clients.weather_api import (
     DEFAULT_FORECAST_DAYS,
+    DEFAULT_HOURLY_HOURS,
     CurrentWeather,
     Forecast,
     History,
+    HourlyForecastResponse,
     Location,
     WeatherApi,
 )
 
 ForecastKey = tuple[str, int]
+HourlyKey = tuple[str, int]
 HistoryKey = tuple[str, date, date]
 
 
@@ -22,6 +25,7 @@ class RequestWeatherClient:
         self._client = client
         self._current: dict[str, CurrentWeather] = {}
         self._forecasts: dict[ForecastKey, Forecast] = {}
+        self._hourlies: dict[HourlyKey, HourlyForecastResponse] = {}
         self._histories: dict[HistoryKey, History] = {}
 
     async def get_current(self, location: Location) -> CurrentWeather:
@@ -41,6 +45,17 @@ class RequestWeatherClient:
         if key not in self._forecasts:
             self._forecasts[key] = await self._client.get_forecast(location, days)
         return self._forecasts[key]
+
+    async def get_hourly(
+        self,
+        location: Location,
+        hours: int = DEFAULT_HOURLY_HOURS,
+    ) -> HourlyForecastResponse:
+        """Reutiliza el pronóstico horario de la misma ubicación y cantidad."""
+        key = (self._location_key(location), hours)
+        if key not in self._hourlies:
+            self._hourlies[key] = await self._client.get_hourly(location, hours)
+        return self._hourlies[key]
 
     async def get_history(
         self,

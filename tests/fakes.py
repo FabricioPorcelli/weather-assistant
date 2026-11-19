@@ -12,9 +12,11 @@ from app.agent.llm import (
 )
 from app.clients.weather_api import (
     DEFAULT_FORECAST_DAYS,
+    DEFAULT_HOURLY_HOURS,
     CurrentWeather,
     Forecast,
     History,
+    HourlyForecastResponse,
     Location,
 )
 from tests.helpers import (
@@ -24,6 +26,8 @@ from tests.helpers import (
     make_forecast,
     make_forecast_range,
     make_history,
+    make_hourly,
+    make_hours,
 )
 
 
@@ -104,11 +108,13 @@ class FakeWeatherApi:
         *,
         current: CurrentWeather | None = None,
         forecasts: dict[str, Forecast] | None = None,
+        hourlies: dict[str, HourlyForecastResponse] | None = None,
         histories: list[History] | None = None,
         error: Exception | None = None,
     ) -> None:
         self.current = current or make_current()
         self.forecasts = forecasts or {}
+        self.hourlies = hourlies or {}
         self.histories = histories or [
             make_history([make_day(day=DEFAULT_DAY - timedelta(days=1))])
         ]
@@ -137,6 +143,22 @@ class FakeWeatherApi:
             return self.forecasts[key]
         return make_forecast(
             make_forecast_range(),
+            location=location.city or "Ubicación de prueba",
+        )
+
+    async def get_hourly(
+        self,
+        location: Location,
+        hours: int = DEFAULT_HOURLY_HOURS,
+    ) -> HourlyForecastResponse:
+        key = self._key(location)
+        self.calls.append(("hourly", key, hours))
+        if self.error is not None:
+            raise self.error
+        if key in self.hourlies:
+            return self.hourlies[key]
+        return make_hourly(
+            make_hours(count=hours),
             location=location.city or "Ubicación de prueba",
         )
 

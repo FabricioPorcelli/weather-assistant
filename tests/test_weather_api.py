@@ -55,6 +55,34 @@ FORECAST_PAYLOAD = {
     ],
 }
 
+HOURLY_PAYLOAD = {
+    "location": "Madrid, Spain",
+    "hours": [
+        {
+            "datetime": "2026-09-25T12:00:00",
+            "temperature_c": 21.5,
+            "feels_like_c": 21.0,
+            "humidity": 55,
+            "precipitation_mm": 0.0,
+            "precipitation_probability": 10,
+            "conditions": "Parcialmente nublado",
+            "wind_speed_kmh": 12.4,
+            "icon": "partly-cloudy-day",
+        },
+        {
+            "datetime": "2026-09-25T13:00:00",
+            "temperature_c": 22.0,
+            "feels_like_c": 21.5,
+            "humidity": 52,
+            "precipitation_mm": 0.0,
+            "precipitation_probability": 5,
+            "conditions": "Despejado",
+            "wind_speed_kmh": 10.0,
+            "icon": "clear-day",
+        },
+    ],
+}
+
 HISTORY_PAYLOAD = {
     "location": "Madrid, Spain",
     "days": [
@@ -133,6 +161,48 @@ async def test_get_forecast_rejects_invalid_days_without_request(
 ):
     with pytest.raises(ValueError):
         await weather_client.get_forecast(Location(city="Madrid"), days=days)
+
+    assert len(api_mock.calls) == 0
+
+
+async def test_get_hourly_by_city_uses_default_hours(weather_client, api_mock):
+    route = api_mock.get("/v1/hourly/Madrid", params={"hours": 24}).mock(
+        return_value=httpx.Response(200, json=HOURLY_PAYLOAD)
+    )
+
+    result = await weather_client.get_hourly(Location(city="Madrid"))
+
+    assert route.called
+    assert result.location == "Madrid, Spain"
+    assert len(result.hours) == 2
+    assert result.hours[0].datetime == datetime(2026, 9, 25, 12, 0)
+    assert result.hours[0].icon == "partly-cloudy-day"
+    assert result.hours[1].conditions == "Despejado"
+    assert route.calls.last.request.url.params["hours"] == "24"
+
+
+async def test_get_hourly_by_coords_uses_custom_hours(weather_client, api_mock):
+    route = api_mock.get(
+        "/v1/hourly/coords/-34.60/-58.38",
+        params={"hours": 48},
+    ).mock(return_value=httpx.Response(200, json=HOURLY_PAYLOAD))
+
+    result = await weather_client.get_hourly(
+        Location(lat=-34.6, lon=-58.38),
+        hours=48,
+    )
+
+    assert route.called
+    assert len(result.hours) == 2
+    assert route.calls.last.request.url.params["hours"] == "48"
+
+
+@pytest.mark.parametrize("hours", [0, 49, -1])
+async def test_get_hourly_rejects_invalid_hours_without_request(
+    weather_client, api_mock, hours
+):
+    with pytest.raises(ValueError):
+        await weather_client.get_hourly(Location(city="Madrid"), hours=hours)
 
     assert len(api_mock.calls) == 0
 

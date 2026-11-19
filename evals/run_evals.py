@@ -25,10 +25,13 @@ from app.agent.llm import (  # noqa: E402
 )
 from app.agent.loop import run_agent  # noqa: E402
 from app.clients.weather_api import (  # noqa: E402
+    DEFAULT_HOURLY_HOURS,
     CurrentWeather,
     DailyForecast,
     Forecast,
     History,
+    HourlyForecast,
+    HourlyForecastResponse,
     Location,
     LocationNotFound,
     UpstreamError,
@@ -57,6 +60,13 @@ class EmptyWeatherApi:
         location: Location,
         days: int = 5,
     ) -> Forecast:
+        raise LocationNotFound("no hay ubicación para consultar")
+
+    async def get_hourly(
+        self,
+        location: Location,
+        hours: int = DEFAULT_HOURLY_HOURS,
+    ) -> HourlyForecastResponse:
         raise LocationNotFound("no hay ubicación para consultar")
 
     async def get_history(
@@ -102,6 +112,22 @@ class FixtureWeatherApi:
         return Forecast(
             location=data["current"]["location"],
             days=daily,
+        )
+
+    async def get_hourly(
+        self,
+        location: Location,
+        hours: int = DEFAULT_HOURLY_HOURS,
+    ) -> HourlyForecastResponse:
+        self.calls.append(("hourly", location.city or location.label, hours))
+        data = self._lookup(location)
+        raw_hours = data.get("hourly") or []
+        hourly = [HourlyForecast.model_validate(item) for item in raw_hours[:hours]]
+        if not hourly:
+            raise UpstreamError("el fixture no tiene pronóstico horario")
+        return HourlyForecastResponse(
+            location=data["current"]["location"],
+            hours=hourly,
         )
 
     async def get_history(

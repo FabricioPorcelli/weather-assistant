@@ -11,6 +11,8 @@ from tests.helpers import (
     make_day,
     make_forecast,
     make_history,
+    make_hourly,
+    make_hours,
 )
 
 
@@ -77,6 +79,39 @@ async def test_coordinates_are_rounded_in_cache(weather_client, api_mock):
     )
 
     assert route.call_count == 1
+
+
+async def test_hourly_is_reused_for_same_location_and_hours(
+    weather_client,
+    api_mock,
+):
+    hourly = make_hourly(make_hours(count=24))
+    route = api_mock.get("/v1/hourly/Madrid", params={"hours": 24}).mock(
+        return_value=httpx.Response(200, json=hourly.model_dump(mode="json"))
+    )
+    cached = RequestWeatherClient(weather_client)
+
+    await cached.get_hourly(Location(city="Madrid"), hours=24)
+    await cached.get_hourly(Location(city="Madrid"), hours=24)
+
+    assert route.call_count == 1
+
+
+async def test_different_hour_counts_are_not_shared(weather_client, api_mock):
+    hourly = make_hourly(make_hours(count=48))
+    short = api_mock.get("/v1/hourly/Madrid", params={"hours": 24}).mock(
+        return_value=httpx.Response(200, json=hourly.model_dump(mode="json"))
+    )
+    long = api_mock.get("/v1/hourly/Madrid", params={"hours": 48}).mock(
+        return_value=httpx.Response(200, json=hourly.model_dump(mode="json"))
+    )
+    cached = RequestWeatherClient(weather_client)
+
+    await cached.get_hourly(Location(city="Madrid"), hours=24)
+    await cached.get_hourly(Location(city="Madrid"), hours=48)
+
+    assert short.call_count == 1
+    assert long.call_count == 1
 
 
 async def test_history_is_reused(weather_client, api_mock):

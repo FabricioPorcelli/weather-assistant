@@ -7,9 +7,17 @@ from app.advice.models import (
     Confidence,
     DayEvaluation,
 )
-from app.clients.weather_api import CurrentWeather, DailyForecast, Forecast, History
+from app.clients.weather_api import (
+    CurrentWeather,
+    DailyForecast,
+    Forecast,
+    History,
+    HourlyForecast,
+    HourlyForecastResponse,
+)
 
 DEFAULT_DAY = date(2026, 10, 27)
+DEFAULT_HOUR = datetime(2026, 10, 27, 9, 0)
 
 
 def make_day(
@@ -66,6 +74,54 @@ def make_history(
 ) -> History:
     """Construye un histórico a partir de sus días."""
     return History(location=location, days=days)
+
+
+def make_hour(
+    *,
+    moment: datetime = DEFAULT_HOUR,
+    temperature_c: float = 20.0,
+    feels_like_c: float = 19.5,
+    humidity: int = 60,
+    precipitation_mm: float = 0.0,
+    precipitation_probability: int | None = 10,
+    conditions: str = "Parcialmente nublado",
+    wind_speed_kmh: float = 12.0,
+    icon: str = "partly-cloudy-day",
+) -> HourlyForecast:
+    """Construye una hora de pronóstico con valores controlados."""
+    return HourlyForecast(
+        datetime=moment,
+        temperature_c=temperature_c,
+        feels_like_c=feels_like_c,
+        humidity=humidity,
+        precipitation_mm=precipitation_mm,
+        precipitation_probability=precipitation_probability,
+        conditions=conditions,
+        wind_speed_kmh=wind_speed_kmh,
+        icon=icon,
+    )
+
+
+def make_hours(
+    *,
+    start: datetime = DEFAULT_HOUR,
+    count: int = 24,
+    **hour_kwargs,
+) -> list[HourlyForecast]:
+    """Construye horas consecutivas con los mismos valores."""
+    return [
+        make_hour(moment=start + timedelta(hours=index), **hour_kwargs)
+        for index in range(count)
+    ]
+
+
+def make_hourly(
+    hours: list[HourlyForecast] | None = None,
+    *,
+    location: str = "Madrid, Spain",
+) -> HourlyForecastResponse:
+    """Construye un pronóstico horario a partir de sus horas."""
+    return HourlyForecastResponse(location=location, hours=hours or [make_hour()])
 
 
 def make_evaluation(
