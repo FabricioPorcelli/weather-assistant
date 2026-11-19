@@ -24,6 +24,7 @@ def test_tool_definitions_include_all_tools():
     assert names == {
         "get_current_weather",
         "get_forecast",
+        "get_hourly_forecast",
         "get_umbrella_advice",
         "get_clothing_advice",
         "get_watering_advice",
@@ -55,6 +56,20 @@ async def test_get_forecast_tool():
     assert result["location"] == "Madrid"
     assert result["days"][0]["date_label"] == "martes 27 de octubre de 2026"
     assert ("forecast", "Madrid", 3) in fake.calls
+
+
+async def test_get_hourly_forecast_tool():
+    fake = FakeWeatherApi()
+    result = await execute_tool(
+        "get_hourly_forecast",
+        _arguments(location={"city": "Madrid"}, hours=6),
+        fake,
+    )
+
+    assert result["location"] == "Madrid"
+    assert len(result["hours"]) == 6
+    assert result["hours"][0]["datetime"] == "2026-10-27T09:00:00"
+    assert ("hourly", "Madrid", 6) in fake.calls
 
 
 async def test_umbrella_tool_accepts_date_alias():
@@ -184,6 +199,16 @@ async def test_invalid_arguments_return_error(arguments):
     result = await execute_tool(
         "get_forecast",
         arguments,
+        FakeWeatherApi(),
+    )
+
+    assert "inválidos" in result["error"]
+
+
+async def test_invalid_hourly_arguments_return_error():
+    result = await execute_tool(
+        "get_hourly_forecast",
+        _arguments(location={"city": "Madrid"}, hours=99),
         FakeWeatherApi(),
     )
 

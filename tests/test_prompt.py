@@ -86,6 +86,17 @@ def test_prompt_uses_location_from_context_without_asking_again():
     assert "error de ubicación" in prompt
 
 
+def test_prompt_uses_hourly_tool_for_time_of_day():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "get_hourly_forecast" in prompt
+    assert "La primera hora devuelta es la hora local actual" in prompt
+    assert "Las horas son locales de la ubicación" in prompt
+    assert "mañana 06:00–11:59" in prompt
+    assert "más allá de las próximas 48 h" in prompt
+    assert "no hay detalle por hora" not in prompt
+
+
 def test_prompt_prefers_best_day_for_location_comparison():
     prompt = build_system_prompt(now=_fixed_now())
 

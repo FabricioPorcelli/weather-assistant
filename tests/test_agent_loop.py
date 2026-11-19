@@ -74,7 +74,42 @@ async def test_tool_call_then_final_answer():
     ]
     assert len(tool_messages) == 1
     assert "umbrella" in tool_messages[0]["content"]
-    assert len(fake_llm.calls[1]["tools"]) == 7
+    assert len(fake_llm.calls[1]["tools"]) == 8
+
+
+async def test_hourly_tool_call_then_final_answer():
+    fake_weather = FakeWeatherApi()
+    fake_llm = FakeLLMClient(
+        [
+            LLMResponse(
+                tool_calls=[
+                    _tool_call(
+                        1,
+                        "get_hourly_forecast",
+                        {"location": {"city": "Madrid"}, "hours": 6},
+                    )
+                ]
+            ),
+            LLMResponse(content="A la tarde sigue nublado."),
+        ]
+    )
+
+    answer = await run_agent(
+        "¿Cómo va a estar esta tarde en Madrid?",
+        fake_weather,
+        fake_llm,
+        now=NOW,
+    )
+
+    assert answer == "A la tarde sigue nublado."
+    assert ("hourly", "Madrid", 6) in fake_weather.calls
+    tool_message = next(
+        message
+        for message in fake_llm.calls[1]["messages"]
+        if message["role"] == "tool"
+    )
+    assert '"hours"' in tool_message["content"]
+    assert "2026-10-27T09:00:00" in tool_message["content"]
 
 
 async def test_final_answer_without_tools():

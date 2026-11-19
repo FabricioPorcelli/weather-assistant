@@ -14,7 +14,9 @@ from app.advice.errors import AdviceError
 from app.advice.models import ActivityId, AdviceKind
 from app.agent.prompts import MONTHS_ES, WEEKDAYS_ES
 from app.clients.weather_api import (
+    DEFAULT_HOURLY_HOURS,
     MAX_FORECAST_DAYS,
+    MAX_HOURLY_HOURS,
     Location,
     WeatherApi,
     WeatherApiError,
@@ -62,6 +64,19 @@ class ForecastArgs(BaseModel):
 
     location: Location
     days: int = Field(default=5, ge=1, le=MAX_FORECAST_DAYS)
+
+
+class HourlyArgs(BaseModel):
+    """Argumentos de get_hourly_forecast."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    location: Location
+    hours: int = Field(
+        default=DEFAULT_HOURLY_HOURS,
+        ge=1,
+        le=MAX_HOURLY_HOURS,
+    )
 
 
 class AdviceArgs(BaseModel):
@@ -184,6 +199,31 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     ),
     _function(
+        "get_hourly_forecast",
+        (
+            "Devuelve el pronóstico por hora de una ubicación, desde la hora "
+            "local actual. Usalo para preguntas sobre una franja del día "
+            "(mañana, tarde, noche) o las próximas horas."
+        ),
+        {
+            "type": "object",
+            "properties": {
+                "location": LOCATION_SCHEMA,
+                "hours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": MAX_HOURLY_HOURS,
+                    "description": (
+                        "Cantidad de horas a devolver. Usá 48 si la consulta "
+                        "cruza al día siguiente."
+                    ),
+                },
+            },
+            "required": ["location"],
+            "additionalProperties": False,
+        },
+    ),
+    _function(
         "get_umbrella_advice",
         "Devuelve el consejo determinista de paraguas para una fecha.",
         {
@@ -267,6 +307,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
 TOOL_ARG_MODELS: dict[str, type[BaseModel]] = {
     "get_current_weather": CurrentWeatherArgs,
     "get_forecast": ForecastArgs,
+    "get_hourly_forecast": HourlyArgs,
     "get_umbrella_advice": AdviceArgs,
     "get_clothing_advice": AdviceArgs,
     "get_watering_advice": WateringArgs,
@@ -297,6 +338,8 @@ async def execute_tool(
             result = await client.get_current(args.location)
         elif name == "get_forecast":
             result = await client.get_forecast(args.location, days=args.days)
+        elif name == "get_hourly_forecast":
+            result = await client.get_hourly(args.location, hours=args.hours)
         elif name == "get_umbrella_advice":
             result = await build_advice(
                 AdviceKind.UMBRELLA,
