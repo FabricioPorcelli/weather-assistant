@@ -35,7 +35,8 @@ chat. El assistant consulta `weather-api` para resolver consejos y actividades.
 - Docker y Docker Compose.
 - El repo [weather-api](https://github.com/FabricioPorcelli/weather-api) en
   `../weather-api`, con su `.env` y una clave de Visual Crossing.
-- Una clave de Groq para ejecutar el agente real. Los tests no la necesitan.
+- Una clave de un proveedor compatible con OpenAI (Groq, OpenCode u otro)
+  para ejecutar el agente real. Los tests no la necesitan.
 
 ## Configuración
 
@@ -61,6 +62,36 @@ Variables principales:
 | `HISTORY_TURNS` | `6` |
 
 El resto está documentado en `.env.example`.
+
+### OpenCode como proveedor
+
+OpenCode expone una API compatible con OpenAI Chat Completions, con soporte de
+herramientas y streaming. Para usar el pago por uso:
+
+```env
+LLM_BASE_URL=https://opencode.ai/inference/openai/v1
+LLM_API_KEY=oc_sk_...
+LLM_MODEL=mimo-v2.6-flash
+```
+
+La clave se crea en [OpenCode Console](https://opencode.ai/console). Los modelos
+gratuitos solo funcionan dentro de OpenCode: desde este cliente reciben `403`.
+
+Modelos con tool calling y precios aproximados por millón de tokens
+(entrada/salida):
+
+| Modelo | Precio | Nota |
+|---|---|---|
+| `mimo-v2.6-flash` | 0.14 / 0.28 | El más barato |
+| `claude-haiku-5-5` | 0.10 / 0.50 | Buena calidad de instrucciones |
+| `deepseek-v4.1-flash` | 0.15 / 0.60 | Buen equilibrio |
+| `glm-5.3-flash` | 0.15 / 0.50 | Alternativa |
+
+Si usás el plan **Go**, la base es
+`https://opencode.ai/inference/go/openai/v1` y hay que enviar el header
+`x-opencode-session`. El cliente actual todavía no lo agrega; para ese plan
+habría que sumar ese soporte. Para un asistente fuera de OpenCode conviene el
+pago por uso.
 
 ## Docker
 
