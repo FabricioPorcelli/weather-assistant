@@ -21,6 +21,7 @@ chat. El assistant consulta `weather-api` para resolver consejos y actividades.
 ## Qué hace
 
 - Devuelve consejos de paraguas, ropa y riego para una ciudad o coordenadas.
+- Responde preguntas por franja horaria (mañana, tarde o noche) con el pronóstico por hora.
 - Evalúa actividades al aire libre y calcula el mejor día de un rango.
 - Expone los consejos por HTTP sin LLM.
 - Ejecuta un agente con tool calling desde la terminal.
