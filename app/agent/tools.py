@@ -11,7 +11,13 @@ from app.advice.engine import (
     find_best_day,
 )
 from app.advice.errors import AdviceError
-from app.advice.models import ActivityId, AdviceKind
+from app.advice.models import (
+    ActivityId,
+    ActivityVerdict,
+    AdviceKind,
+    BestDayResult,
+    Confidence,
+)
 from app.agent.prompts import MONTHS_ES, WEEKDAYS_ES
 from app.clients.weather_api import (
     DEFAULT_HOURLY_HOURS,
@@ -118,23 +124,42 @@ class BestDayArgs(BaseModel):
     top_n: int = Field(default=3, ge=1, le=MAX_FORECAST_DAYS)
 
 
-def _format_date_label(value: str) -> str:
-    """Convierte una fecha ISO en un texto con día de la semana en español."""
+VERDICT_LABELS = {
+    ActivityVerdict.IDEAL.value: "ideal",
+    ActivityVerdict.ACCEPTABLE.value: "aceptable",
+    ActivityVerdict.NOT_RECOMMENDED.value: "no recomendable",
+}
+
+
+def _format_date_label(
+    value: str,
+    *,
+    reference_date: date | None = None,
+) -> str:
+    """Formatea una fecha sin repetir el mes o el año cuando son obvios."""
     try:
         parsed = date.fromisoformat(value)
     except ValueError:
         return value
-    return (
-        f"{WEEKDAYS_ES[parsed.weekday()]} {parsed.day} de "
-        f"{MONTHS_ES[parsed.month - 1]} de {parsed.year}"
-    )
+
+    reference = reference_date or date.today()
+    label = f"{WEEKDAYS_ES[parsed.weekday()]} {parsed.day}"
+    if parsed.year != reference.year:
+        return f"{label} de {MONTHS_ES[parsed.month - 1]} de {parsed.year}"
+    if parsed.month != reference.month:
+        return f"{label} de {MONTHS_ES[parsed.month - 1]}"
+    return label
 
 
-def _add_date_labels(value: Any) -> None:
-    """Agrega date_label a cada fecha para que el modelo no calcule el día."""
+def _add_date_labels(
+    value: Any,
+    *,
+    reference_date: date | None = None,
+) -> None:
+    """Agrega etiquetas cortas a fechas y veredictos para el modelo."""
     if isinstance(value, list):
         for item in value:
-            _add_date_labels(item)
+            _add_date_labels(item, reference_date=reference_date)
         return
 
     if not isinstance(value, dict):
@@ -142,9 +167,43 @@ def _add_date_labels(value: Any) -> None:
 
     for key, item in list(value.items()):
         if key in {"date", "target_date", "start", "end"} and isinstance(item, str):
-            value[f"{key}_label"] = _format_date_label(item)
+            value[f"{key}_label"] = _format_date_label(
+                item,
+                reference_date=reference_date,
+            )
+        elif key == "verdict" and isinstance(item, str):
+            label = VERDICT_LABELS.get(item)
+            if label:
+                value["verdict_label"] = label
         elif isinstance(item, (dict, list)):
-            _add_date_labels(item)
+            _add_date_labels(item, reference_date=reference_date)
+
+
+def _drop_low_confidence(
+    result: BestDayResult,
+    top_n: int,
+) -> BestDayResult:
+    """Descarta los días de confianza baja antes de responder."""
+    reliable = [
+        evaluation
+        for evaluation in result.ranking
+        if evaluation.confidence != Confidence.LOW
+    ]
+    ranking = reliable[:top_n]
+    caveats = list(result.caveats)
+    if not reliable:
+        caveats.append("No hay días con pronóstico confiable en el rango pedido.")
+
+    return result.model_copy(
+        update={
+            "ranking": ranking,
+            "has_acceptable_day": any(
+                evaluation.verdict != ActivityVerdict.NOT_RECOMMENDED
+                for evaluation in reliable
+            ),
+            "caveats": caveats,
+        }
+    )
 
 
 def _function(
@@ -322,6 +381,7 @@ async def execute_tool(
     client: WeatherApi,
     *,
     comfort_offset_c: float = 0.0,
+    reference_date: date | None = None,
 ) -> dict[str, Any]:
     """Valida los argumentos, ejecuta la herramienta y devuelve JSON."""
     arg_model = TOOL_ARG_MODELS.get(name)
@@ -369,19 +429,20 @@ async def execute_tool(
                 args.target_date,
             )
         elif name == "find_best_day":
-            result = await find_best_day(
+            candidates = await find_best_day(
                 args.activity,
                 args.location,
                 client,
                 args.start_date,
                 args.end_date,
-                top_n=args.top_n,
+                top_n=MAX_FORECAST_DAYS,
             )
+            result = _drop_low_confidence(candidates, args.top_n)
         else:
             return {"error": f"Herramienta desconocida: {name}"}
     except (AdviceError, WeatherApiError, ValueError) as exc:
         return {"error": str(exc)}
 
     data = result.model_dump(mode="json")
-    _add_date_labels(data)
+    _add_date_labels(data, reference_date=reference_date)
     return data

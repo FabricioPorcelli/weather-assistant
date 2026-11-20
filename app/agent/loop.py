@@ -30,6 +30,7 @@ async def run_agent(
 
     # La caché vive solo durante esta pregunta y se comparte entre herramientas.
     cached_weather = RequestWeatherClient(weather_client)
+    reference_date = (now or datetime.now().astimezone()).date()
     messages: list[dict[str, Any]] = [
         {
             "role": "system",
@@ -68,6 +69,7 @@ async def run_agent(
                 call.arguments,
                 cached_weather,
                 comfort_offset_c=comfort_offset_c,
+                reference_date=reference_date,
             )
             messages.append(tool_result_message(call.id, result))
             tool_calls_used += 1

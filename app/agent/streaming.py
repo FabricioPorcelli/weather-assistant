@@ -81,6 +81,7 @@ async def stream_agent(
             ),
         }
     ]
+    reference_date = (now or datetime.now().astimezone()).date()
     if history:
         messages.extend(history)
     messages.append({"role": "user", "content": question})
@@ -136,6 +137,7 @@ async def stream_agent(
                 call.arguments,
                 weather_client,
                 comfort_offset_c=comfort_offset_c,
+                reference_date=reference_date,
             )
             yield ToolCallFinished(call.id, call.name, call.arguments, result)
             messages.append(tool_result_message(call.id, result))
