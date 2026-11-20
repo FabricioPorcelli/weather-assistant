@@ -61,7 +61,39 @@ def test_prompt_requires_date_labels_from_tools():
     prompt = build_system_prompt(now=_fixed_now())
 
     assert "date_label" in prompt
+    assert "no le agregues mes ni año" in prompt
+    assert "Preferí 'hoy', 'mañana' o 'pasado" in prompt
     assert "No calcules el día de la semana" in prompt
+
+
+def test_prompt_keeps_confidence_out_of_the_text():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "No menciones el nivel de confianza" in prompt
+    assert "confidence='low'" in prompt
+    assert "próximos 6 días" in prompt
+
+
+def test_prompt_limits_ranking_and_answer_length():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "solo el mejor día" in prompt
+    assert "una alternativa" in prompt
+    assert "No enumeres todo el ranking" in prompt
+    assert "unas 60 palabras" in prompt
+
+
+def test_prompt_combines_activity_and_hourly_forecast():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "actividad para el día y get_hourly_forecast" in prompt
+
+
+def test_prompt_uses_verdict_labels():
+    prompt = build_system_prompt(now=_fixed_now())
+
+    assert "verdict_label" in prompt
+    assert "not_recommended" in prompt
 
 
 def test_prompt_does_not_offer_unavailable_sources():
