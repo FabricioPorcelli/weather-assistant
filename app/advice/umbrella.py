@@ -9,7 +9,7 @@ from app.advice.rules_config import (
 )
 from app.clients.weather_api import DailyForecast
 
-DAILY_CAVEAT = "El pronóstico es diario: no distingue mañana, tarde o noche."
+DAILY_CAVEAT = "Este consejo se basa en el pronóstico diario."
 
 
 def umbrella_verdict(day: DailyForecast) -> str:

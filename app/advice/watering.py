@@ -12,7 +12,7 @@ from app.advice.rules_config import (
 )
 from app.clients.weather_api import Forecast, History
 
-DAILY_CAVEAT = "El pronóstico es diario: no distingue mañana, tarde o noche."
+DAILY_CAVEAT = "Este consejo se basa en el pronóstico diario."
 HEURISTIC_CAVEAT = (
     "Es una heurística: no reemplaza un balance hídrico real "
     "(la evapotranspiración sería más exacta)."

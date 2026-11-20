@@ -21,7 +21,7 @@ from app.advice.rules_config import (
 )
 from app.clients.weather_api import DailyForecast
 
-DAILY_CAVEAT = "El pronóstico es diario: no distingue mañana, tarde o noche."
+DAILY_CAVEAT = "La evaluación se basa en el pronóstico diario."
 NO_HUMIDITY_CAVEAT = (
     "El pronóstico diario no incluye humedad, así que no se usa para días futuros."
 )
